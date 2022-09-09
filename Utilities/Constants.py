@@ -1,0 +1,110 @@
+import cv2
+
+# Debug Mode
+DEBUG_MODE = True
+
+# If DEBUG_MODE, Application is not full-screen. It follows the window size below.
+WINDOW_WIDTH = 1280
+WINDOW_HEIGHT = 720
+
+# Preferred Camera Resolution
+CAMERA_RESOLUTION_WIDTH = 1280
+CAMERA_RESOLUTION_HEIGHT = 720
+
+# # Fonts
+FONT_FAMILY = "Arial" 
+TITLE_FONT_SIZE = 40
+SUBTITLE_FONT_SIZE = 25
+HEADING_FONT_SIZE = 20
+LABEL_FONT_SIZE = 15
+# FOOTNOTE_FONT_SIZE = 10
+COUNTDOWN_FONT_SIZE = 200
+
+# # Colors
+THEME_COLOR_BLUE = "#A8D8EA"
+THEME_COLOR_PURPLE = "#AA96DA"
+THEME_COLOR_PINK = "#FCBAD3"
+THEME_COLOR_YELLOW = "#FFFFD2"
+THEME_COLOR = THEME_COLOR_BLUE
+
+# Subviews Size
+TOP_BAR_HEIGHT = 80
+CONTROL_BAR_WIDTH = 320
+if DEBUG_MODE:
+    CONTROL_BAR_BUTTON_HEIGHT = 50
+else:
+    CONTROL_BAR_BUTTON_HEIGHT = 68
+# VIDEO_VIEW_BOTTOM_BAR_HEIGHT = 60
+
+# # Camera
+SET_CAMERA_FPS = 24                 # Only for setting, the real camera fps is fewer
+
+# # Pose Detection
+LANDMARK_COLOR = (0, 255, 255)      # Aqua
+LANDMARK_THICKNESS = 4
+LANDMAKR_CIRCLE_RADIUS = 2
+CONNECTION_COLOR = (255, 255, 255)  # White
+CONNECTION_THICKNESS = 2
+CONNECTION_CIRCLE_RADIUS = 1
+
+# Cauclation
+DOT_RADIUS = 8
+DOT_COLOR = (0, 0, 255)             # Blue
+ANGLE_COLOR = (255, 255, 0)         # Yellow
+
+# Game
+CURRENT_PATH_SET = "Set1"
+TOUCHED_GOOD_POINT_WEIGHT = 5.0
+UNTOUCHED_GOOD_POINT_WEIGHT = 0.0
+TOUCHED_BAD_POINT_WEIGHT = 3.0
+
+GOOD_POINTS_COLOR = (0, 255, 0)
+TOUCHING_GOOD_POINTS_COLOR = (255, 255, 0)
+TOUCHED_GOOD_POINTS_COLOR = (255, 255, 255)
+BAD_POINTS_COLOR = (255, 0, 0)
+TOUCHING_BAD_POINTS_COLOR = (128, 0, 0)
+TOUCHED_BAD_POINTS_COLOR = (0, 0, 0)
+
+POINT_FONTFACE = cv2.FONT_HERSHEY_SIMPLEX
+POINT_FONTSCALE = 1
+POINT_TEXT_COLOR = (0, 0, 255)          # Blue
+POINT_TEXT_THICKNESS = 3
+
+# Recording
+RECORDING_FPS = 10
+
+# # Video Player
+# SLEEP_DELTA = 1.0
+
+# Settings
+CALIBRATION_PIXELS = 100
+
+# Pickle Location & Variable Name
+CAMERA_NUMBER = "camera_number"
+CAMERA_ORIENTATION_MODE = "camera_orientation_mode"
+IS_DANGER_ALERT_ON = "is_danger_alert_on"
+IS_MIRROR_CAMERA = "is_mirror_camera"
+IS_REVERSE_KEYPAD = "is_reverse_keypad"
+DISTANCE_CALIBRATION_ACTUAL_VALUE = "distance_calibration_actual_value"
+GROUND_RATIO_CALIBRATION_ACTUAL_VALUE = "ground_ratio_calibration_actual_value"
+SENSITIVITY = "sensitivity"
+LOCALE = "locale"
+
+# Map Variables Name
+PATH_ID = "path_id"
+PATH_NAME = "path_name"
+PATH_GAMEMODE = "path_gamemode"
+POINT_X = "point_x"
+POINT_Y = "point_y"
+POINT_IS_GOOD = "point_is_good"
+POINT_ORDER = "point_order"
+POINT_ALPHABET = "point_alphabet"
+
+# File Locations (Under Data Folder)
+IMAGE_FILES_LOCATION = "Images/"
+VIDEO_FILES_LOCATION = "Videos/"
+SOUND_FILES_LOCATION = "Sounds/"
+TRANSLATION_FILES_LOCATION = "Translations/"
+PATH_IMAGE_FILE_LOCATION = "Paths/Images/"
+PATH_FILE_LOCATION = f"Paths/{CURRENT_PATH_SET}.csv"
+SETTINGS_FILE_LOCATION = ""
