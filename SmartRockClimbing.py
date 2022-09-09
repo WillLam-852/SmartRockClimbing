@@ -3,6 +3,7 @@ import i18n
 import gc
 from tkinter import *
 from Models.Camera.Resolution import Resolution
+from Models.Enums.CameraMode import CAMERA_MODE
 
 from Models.Enums.Screen import SCREEN
 from Modules.SaveLoadModule import SaveLoadModule
@@ -13,7 +14,7 @@ from Widgets.ControlBar import ControlBar
 
 from Screens.HomeScreen import HomeScreen
 from Screens.CameraScreen import CameraScreen
-# from Screens.PathsScreen import PathsScreen
+from Screens.PathsScreen import PathsScreen
 
 class SmartRockClimbing:
 
@@ -39,7 +40,7 @@ class SmartRockClimbing:
         self.is_reverse_keypad = SaveLoadModule().load_settings().is_reverse_keypad
 
         if DEBUG_MODE:
-            self.navigate(SCREEN.HOME)
+            self.navigate(SCREEN.PATHS, camera_mode=CAMERA_MODE.GAME)
         else:
             self.navigate(SCREEN.HOME)
 
@@ -67,16 +68,15 @@ class SmartRockClimbing:
                 change_buttons=self.change_buttons, 
                 bg=THEME_COLOR
             )
-        # elif screen_to == SCREEN.PATHS:
-        #     self.current_screen = PathsScreen(
-        #         self.root, 
-        #         view_width=self.view_width, 
-        #         view_height=self.view_height, 
-        #         navigate=self.navigate, 
-        #         change_title=self.change_title, 
-        #         change_buttons=self.change_buttons, 
-        #         bg=THEME_COLOR
-        #     )
+        elif screen_to == SCREEN.PATHS:
+            self.current_screen = PathsScreen(
+                self.root, 
+                view_size=self.view_size, 
+                navigate=self.navigate, 
+                change_title=self.change_title, 
+                change_buttons=self.change_buttons, 
+                bg=THEME_COLOR
+            )
         # elif screen_to == SCREEN.RESULT:
         #     self.current_screen = self.result_view
         # elif screen_to == SCREEN.RECORDINGS:
