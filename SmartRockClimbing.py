@@ -7,7 +7,7 @@ from Models.Resolution import Resolution
 from Models.Enums.CameraMode import CAMERA_MODE
 
 from Models.Enums.Screen import SCREEN
-from Models.TransitionData import TransitionData
+from Models.SettingsTransitionData import SettingsTransitionData
 from Modules.SaveLoadModule import SaveLoadModule
 from Utilities.OpenFile import open_file
 from Utilities.Constants import *
@@ -43,8 +43,7 @@ class SmartRockClimbing:
         self.is_keypad_reverse = SaveLoadModule().load_settings().is_keypad_reverse
 
         if DEBUG_MODE:
-            transition_data = TransitionData(settings=SaveLoadModule().load_settings(), saved_rows=[], renamed_paths=[], updated_path_images=[])
-            self.navigate(SCREEN.PATHS, camera_mode=CAMERA_MODE.SETTINGS, transition_data=transition_data)
+            self.navigate(SCREEN.PATHS, camera_mode=CAMERA_MODE.GAME)
             # self.navigate(SCREEN.HOME)
         else:
             self.navigate(SCREEN.HOME)

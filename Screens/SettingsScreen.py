@@ -8,7 +8,7 @@ from Models.Resolution import Resolution
 from Models.Enums.CameraOrientation import CAMERA_ORIENTATION
 from Models.Enums.Screen import SCREEN
 from Models.Enums.SensitivityLevel import SENSITIVITY_LEVEL
-from Models.TransitionData import TransitionData
+from Models.SettingsTransitionData import SettingsTransitionData
 from Modules.SaveLoadModule import SaveLoadModule
 from Modules.PoseDetectionModule import PoseDetectionModule
 from Modules.SoundModule import SoundModule
@@ -54,20 +54,20 @@ class SettingsScreen(Frame):
 
     # Navigation Methods
 
-    def launch(self, transition_data:TransitionData=None):
+    def launch(self, settings_transition_data:SettingsTransitionData=None):
         """
         Parameters
         ----------
-        transition_data : SettingsAndPathData
+        settings_transition_data : SettingsAndPathData
             a class instance used to transfer data between SettingsScreen, PathsScreen & CameraScreen in Settings (None if from HomeScreen)
         """
         i18n.set('locale', self.save_load_module.load_locale())
         self.old_settings = self.save_load_module.load_settings()
             
-        if transition_data:
-            self.transition_data = transition_data
+        if settings_transition_data:
+            self.settings_transition_data = settings_transition_data
         else:
-            self.transition_data = TransitionData(settings=copy.deepcopy(self.old_settings), saved_rows=self.save_load_module.load_path_data(), renamed_paths=[], updated_path_images=[])
+            self.settings_transition_data = SettingsTransitionData(settings=copy.deepcopy(self.old_settings), saved_rows=self.save_load_module.load_path_data(), renamed_paths=[], updated_path_images=[])
         
         self.is_camera_detected = self.restart_camera()
         self.current_page = 0
@@ -90,11 +90,11 @@ class SettingsScreen(Frame):
             self.camera_resolution = self.pose_detection_module.get_camera_resolution(camera_number)
             set_camera_number = camera_number
         else:
-            self.camera_resolution = self.pose_detection_module.get_camera_resolution(self.transition_data.settings.camera_number)
-            set_camera_number = self.transition_data.settings.camera_number
+            self.camera_resolution = self.pose_detection_module.get_camera_resolution(self.settings_transition_data.settings.camera_number)
+            set_camera_number = self.settings_transition_data.settings.camera_number
         if self.camera_resolution:
             camera_view_size = self.gui_camera_view_set(camera_resolution=self.camera_resolution)
-            self.pose_detection_module.set_camera_input(self.camera_view, camera_view_size=camera_view_size, camera_number=set_camera_number, camera_resolution=self.camera_resolution, settings=self.transition_data.settings)
+            self.pose_detection_module.set_camera_input(self.camera_view, camera_view_size=camera_view_size, camera_number=set_camera_number, camera_resolution=self.camera_resolution, settings=self.settings_transition_data.settings)
             self.pose_detection_module.camera_input()
             return True
         else:
@@ -104,21 +104,21 @@ class SettingsScreen(Frame):
     # Button Actions (Page 0)
 
     def sensitivity_btn_pressed(self):
-        if self.transition_data.settings.sensitivity_level == SENSITIVITY_LEVEL.VERY_HIGH:
-            self.transition_data.settings.sensitivity_level = SENSITIVITY_LEVEL.LOW
-        elif self.transition_data.settings.sensitivity_level == SENSITIVITY_LEVEL.LOW:
-            self.transition_data.settings.sensitivity_level = SENSITIVITY_LEVEL.MEDIUM
-        elif self.transition_data.settings.sensitivity_level == SENSITIVITY_LEVEL.MEDIUM:
-            self.transition_data.settings.sensitivity_level = SENSITIVITY_LEVEL.HIGH
-        elif self.transition_data.settings.sensitivity_level == SENSITIVITY_LEVEL.HIGH:
-            self.transition_data.settings.sensitivity_level = SENSITIVITY_LEVEL.VERY_HIGH
-        elif self.transition_data.settings.sensitivity_level == SENSITIVITY_LEVEL.VERY_HIGH:
-            self.transition_data.settings.sensitivity_level = SENSITIVITY_LEVEL.LOW
+        if self.settings_transition_data.settings.sensitivity_level == SENSITIVITY_LEVEL.VERY_HIGH:
+            self.settings_transition_data.settings.sensitivity_level = SENSITIVITY_LEVEL.LOW
+        elif self.settings_transition_data.settings.sensitivity_level == SENSITIVITY_LEVEL.LOW:
+            self.settings_transition_data.settings.sensitivity_level = SENSITIVITY_LEVEL.MEDIUM
+        elif self.settings_transition_data.settings.sensitivity_level == SENSITIVITY_LEVEL.MEDIUM:
+            self.settings_transition_data.settings.sensitivity_level = SENSITIVITY_LEVEL.HIGH
+        elif self.settings_transition_data.settings.sensitivity_level == SENSITIVITY_LEVEL.HIGH:
+            self.settings_transition_data.settings.sensitivity_level = SENSITIVITY_LEVEL.VERY_HIGH
+        elif self.settings_transition_data.settings.sensitivity_level == SENSITIVITY_LEVEL.VERY_HIGH:
+            self.settings_transition_data.settings.sensitivity_level = SENSITIVITY_LEVEL.LOW
         self.gui_update()
 
 
     def danger_alert_btn_pressed(self):
-        self.transition_data.settings.update(is_danger_alert_on=not self.transition_data.settings.is_danger_alert_on)
+        self.settings_transition_data.settings.update(is_danger_alert_on=not self.settings_transition_data.settings.is_danger_alert_on)
         self.gui_update()
 
 
@@ -132,25 +132,25 @@ class SettingsScreen(Frame):
 
 
     def distance_calibration_up_btn_pressed(self):
-        self.transition_data.settings.update(distance_calibration_actual_value=self.transition_data.settings.distance_calibration_actual_value+0.05)
+        self.settings_transition_data.settings.update(distance_calibration_actual_value=self.settings_transition_data.settings.distance_calibration_actual_value+0.05)
         self.gui_update()
 
 
     def distance_calibration_down_btn_pressed(self):
-        if self.transition_data.settings.distance_calibration_actual_value > 0.05:
-            self.transition_data.settings.update(distance_calibration_actual_value=self.transition_data.settings.distance_calibration_actual_value-0.05)
+        if self.settings_transition_data.settings.distance_calibration_actual_value > 0.05:
+            self.settings_transition_data.settings.update(distance_calibration_actual_value=self.settings_transition_data.settings.distance_calibration_actual_value-0.05)
         self.gui_update()
 
 
     def ground_calibration_up_btn_pressed(self):
-        if self.transition_data.settings.ground_ratio_calibration_actual_value > 0.01:
-            self.transition_data.settings.update(ground_ratio_calibration_actual_value=self.transition_data.settings.ground_ratio_calibration_actual_value-0.025)
+        if self.settings_transition_data.settings.ground_ratio_calibration_actual_value > 0.01:
+            self.settings_transition_data.settings.update(ground_ratio_calibration_actual_value=self.settings_transition_data.settings.ground_ratio_calibration_actual_value-0.025)
         self.gui_update()
 
 
     def ground_calibration_down_btn_pressed(self):
-        if self.transition_data.settings.ground_ratio_calibration_actual_value < 1:
-            self.transition_data.settings.update(ground_ratio_calibration_actual_value=self.transition_data.settings.ground_ratio_calibration_actual_value+0.025)
+        if self.settings_transition_data.settings.ground_ratio_calibration_actual_value < 1:
+            self.settings_transition_data.settings.update(ground_ratio_calibration_actual_value=self.settings_transition_data.settings.ground_ratio_calibration_actual_value+0.025)
         self.gui_update()
 
 
@@ -160,7 +160,7 @@ class SettingsScreen(Frame):
 
 
     def set_game_path_btn_pressed(self):
-        self.navigate(SCREEN.PATHS, camera_mode=CAMERA_MODE.SETTINGS, transition_data=self.transition_data)
+        self.navigate(SCREEN.PATHS, camera_mode=CAMERA_MODE.SETTINGS, settings_transition_data=self.settings_transition_data)
 
 
     # Button Actions (Page 1)
@@ -169,18 +169,18 @@ class SettingsScreen(Frame):
         if not self.is_camera_detected:
             self.is_camera_detected = self.restart_camera(0)
             if self.is_camera_detected:
-                self.transition_data.settings.update(camera_number=0)
+                self.settings_transition_data.settings.update(camera_number=0)
             else:
                 # Fail to restart camera (not detected)
                 ctypes.windll.user32.MessageBoxW(0, i18n.t('t.no_camera_is_detected'), i18n.t('t.camera_is_unavailable'), 0)
         else: 
-            self.is_camera_detected = self.restart_camera(self.transition_data.settings.camera_number+1)
+            self.is_camera_detected = self.restart_camera(self.settings_transition_data.settings.camera_number+1)
             if self.is_camera_detected:
-                self.transition_data.settings.update(camera_number=self.transition_data.settings.camera_number+1)
+                self.settings_transition_data.settings.update(camera_number=self.settings_transition_data.settings.camera_number+1)
             else:
                 self.is_camera_detected = self.restart_camera(0)
                 if self.is_camera_detected:
-                    self.transition_data.settings.update(camera_number=0)
+                    self.settings_transition_data.settings.update(camera_number=0)
                 else:
                     # Fail to restart camera (not detected)
                     ctypes.windll.user32.MessageBoxW(0, i18n.t('t.no_camera_is_detected'), i18n.t('t.camera_is_unavailable'), 0)
@@ -188,26 +188,26 @@ class SettingsScreen(Frame):
 
 
     def camera_orientation_btn_pressed(self):
-        if self.transition_data.settings.camera_orientation_mode == CAMERA_ORIENTATION.LANDSCAPE:
-            self.transition_data.settings.update(camera_orientation_mode=CAMERA_ORIENTATION.LEFT)
-        elif self.transition_data.settings.camera_orientation_mode == CAMERA_ORIENTATION.LEFT:
-            self.transition_data.settings.update(camera_orientation_mode=CAMERA_ORIENTATION.INVERTED)
-        elif self.transition_data.settings.camera_orientation_mode == CAMERA_ORIENTATION.INVERTED:
-            self.transition_data.settings.update(camera_orientation_mode=CAMERA_ORIENTATION.RIGHT)
-        elif self.transition_data.settings.camera_orientation_mode == CAMERA_ORIENTATION.RIGHT:
-            self.transition_data.settings.update(camera_orientation_mode=CAMERA_ORIENTATION.LANDSCAPE)
+        if self.settings_transition_data.settings.camera_orientation_mode == CAMERA_ORIENTATION.LANDSCAPE:
+            self.settings_transition_data.settings.update(camera_orientation_mode=CAMERA_ORIENTATION.LEFT)
+        elif self.settings_transition_data.settings.camera_orientation_mode == CAMERA_ORIENTATION.LEFT:
+            self.settings_transition_data.settings.update(camera_orientation_mode=CAMERA_ORIENTATION.INVERTED)
+        elif self.settings_transition_data.settings.camera_orientation_mode == CAMERA_ORIENTATION.INVERTED:
+            self.settings_transition_data.settings.update(camera_orientation_mode=CAMERA_ORIENTATION.RIGHT)
+        elif self.settings_transition_data.settings.camera_orientation_mode == CAMERA_ORIENTATION.RIGHT:
+            self.settings_transition_data.settings.update(camera_orientation_mode=CAMERA_ORIENTATION.LANDSCAPE)
         self.gui_camera_view_rotate()
         self.gui_update()
 
 
     def mirror_camera_btn_pressed(self):
-        self.transition_data.settings.update(is_mirror_camera=not self.transition_data.settings.is_mirror_camera)
+        self.settings_transition_data.settings.update(is_mirror_camera=not self.settings_transition_data.settings.is_mirror_camera)
         self.gui_update()
 
     
     def reverse_keypad_btn_pressed(self):
-        self.transition_data.settings.update(is_keypad_reverse=not self.transition_data.settings.is_keypad_reverse)
-        self.change_keypad(self.transition_data.settings.is_keypad_reverse)
+        self.settings_transition_data.settings.update(is_keypad_reverse=not self.settings_transition_data.settings.is_keypad_reverse)
+        self.change_keypad(self.settings_transition_data.settings.is_keypad_reverse)
         self.gui_update()
 
 
@@ -232,9 +232,9 @@ class SettingsScreen(Frame):
         result = ctypes.windll.user32.MessageBoxW(None, i18n.t('t.confirm_confirm_settings'), i18n.t('t.alert'), 1)
         if result == 1:
             # User pressed ok
-            self.save_load_module.save_settings(self.transition_data.settings)
-            self.save_load_module.save_path_data(transition_data=self.transition_data)
-            self.change_keypad(self.transition_data.settings.is_keypad_reverse)
+            self.save_load_module.save_settings(self.settings_transition_data.settings)
+            self.save_load_module.save_path_data(settings_transition_data=self.settings_transition_data)
+            self.change_keypad(self.settings_transition_data.settings.is_keypad_reverse)
             self.navigate(SCREEN.HOME)
 
 
@@ -271,7 +271,7 @@ class SettingsScreen(Frame):
     def gui_update(self):
         self.gui_clear()
 
-        self.pose_detection_module.update_settings(self.transition_data.settings, is_distance_calibration_shown=self.is_distance_calibration_shown)
+        self.pose_detection_module.update_settings(self.settings_transition_data.settings, is_distance_calibration_shown=self.is_distance_calibration_shown)
 
         if not self.is_camera_detected:
 
@@ -285,7 +285,7 @@ class SettingsScreen(Frame):
 
         elif self.is_distance_calibration_shown:
 
-            actual_value_string = "{:.2f}".format(self.transition_data.settings.distance_calibration_actual_value)
+            actual_value_string = "{:.2f}".format(self.settings_transition_data.settings.distance_calibration_actual_value)
             self.distance_calibration_actual_value_label.config(text=f"""{i18n.t('t.actual_distance_of_the_yellow_line')} {actual_value_string} {i18n.t('t.metre')}""")
             self.ground_calibration_actual_position_label.config(text=i18n.t('t.actual_ground_level'))
             self.distance_calibration_actual_value_label.place(relx=0.5, height=CONTROL_BAR_BUTTON_HEIGHT*2, anchor=N)
@@ -302,20 +302,20 @@ class SettingsScreen(Frame):
 
                 self.sensitivity_label.config(text=i18n.t('t.sensitivity'))
                 self.sensitivity_label.place(relx=0.5, height=CONTROL_BAR_BUTTON_HEIGHT, anchor=N)
-                if self.transition_data.settings.sensitivity_level == SENSITIVITY_LEVEL.VERY_LOW:
+                if self.settings_transition_data.settings.sensitivity_level == SENSITIVITY_LEVEL.VERY_LOW:
                     self.buttons[0] = ControlBarButton(i18n.t('t.very_low'), self.sensitivity_btn_pressed)
-                elif self.transition_data.settings.sensitivity_level == SENSITIVITY_LEVEL.LOW:
+                elif self.settings_transition_data.settings.sensitivity_level == SENSITIVITY_LEVEL.LOW:
                     self.buttons[0] = ControlBarButton(i18n.t('t.low'), self.sensitivity_btn_pressed)
-                elif self.transition_data.settings.sensitivity_level == SENSITIVITY_LEVEL.MEDIUM:
+                elif self.settings_transition_data.settings.sensitivity_level == SENSITIVITY_LEVEL.MEDIUM:
                     self.buttons[0] = ControlBarButton(i18n.t('t.medium'), self.sensitivity_btn_pressed)
-                elif self.transition_data.settings.sensitivity_level == SENSITIVITY_LEVEL.HIGH:
+                elif self.settings_transition_data.settings.sensitivity_level == SENSITIVITY_LEVEL.HIGH:
                     self.buttons[0] = ControlBarButton(i18n.t('t.high'), self.sensitivity_btn_pressed)
-                elif self.transition_data.settings.sensitivity_level == SENSITIVITY_LEVEL.VERY_HIGH:
+                elif self.settings_transition_data.settings.sensitivity_level == SENSITIVITY_LEVEL.VERY_HIGH:
                     self.buttons[0] = ControlBarButton(i18n.t('t.very_high'), self.sensitivity_btn_pressed)
 
                 self.danger_alert_label.config(text=f"{i18n.t('t.danger_alert')}")
                 self.danger_alert_label.place(relx=0.5, y=CONTROL_BAR_BUTTON_HEIGHT, height=CONTROL_BAR_BUTTON_HEIGHT, anchor=N)
-                if self.transition_data.settings.is_danger_alert_on:
+                if self.settings_transition_data.settings.is_danger_alert_on:
                     self.buttons[1] = ControlBarButton(i18n.t('t.yes'), self.danger_alert_btn_pressed)
                 else:
                     self.buttons[1] = ControlBarButton(i18n.t('t.no'), self.danger_alert_btn_pressed)
@@ -327,31 +327,31 @@ class SettingsScreen(Frame):
 
             elif self.current_page == 1:
 
-                self.camera_number_label.config(text=f"{i18n.t('t.camera_number')}: {self.transition_data.settings.camera_number}")
+                self.camera_number_label.config(text=f"{i18n.t('t.camera_number')}: {self.settings_transition_data.settings.camera_number}")
                 self.camera_number_label.place(relx=0.5, height=CONTROL_BAR_BUTTON_HEIGHT, anchor=N)
                 self.buttons[0] = ControlBarButton(i18n.t('t.change_camera'), self.change_camera_btn_pressed)
 
                 self.camera_orientation_label.config(text=f"{i18n.t('t.camera_orientation')}")
                 self.camera_orientation_label.place(relx=0.5, y=CONTROL_BAR_BUTTON_HEIGHT, height=CONTROL_BAR_BUTTON_HEIGHT, anchor=N)
-                if self.transition_data.settings.camera_orientation_mode == CAMERA_ORIENTATION.LANDSCAPE:
+                if self.settings_transition_data.settings.camera_orientation_mode == CAMERA_ORIENTATION.LANDSCAPE:
                     self.buttons[1] = ControlBarButton(i18n.t('t.landscape'), self.camera_orientation_btn_pressed)
-                elif self.transition_data.settings.camera_orientation_mode == CAMERA_ORIENTATION.LEFT:
+                elif self.settings_transition_data.settings.camera_orientation_mode == CAMERA_ORIENTATION.LEFT:
                     self.buttons[1] = ControlBarButton(i18n.t('t.left'), self.camera_orientation_btn_pressed)
-                elif self.transition_data.settings.camera_orientation_mode == CAMERA_ORIENTATION.INVERTED:
+                elif self.settings_transition_data.settings.camera_orientation_mode == CAMERA_ORIENTATION.INVERTED:
                     self.buttons[1] = ControlBarButton(i18n.t('t.inverted'), self.camera_orientation_btn_pressed)
-                elif self.transition_data.settings.camera_orientation_mode == CAMERA_ORIENTATION.RIGHT:
+                elif self.settings_transition_data.settings.camera_orientation_mode == CAMERA_ORIENTATION.RIGHT:
                     self.buttons[1] = ControlBarButton(i18n.t('t.right'), self.camera_orientation_btn_pressed)
                 
                 self.camera_mirror_label.config(text=f"{i18n.t('t.mirror_camera')}")
                 self.camera_mirror_label.place(relx=0.5, y=CONTROL_BAR_BUTTON_HEIGHT*2, height=CONTROL_BAR_BUTTON_HEIGHT, anchor=N)
-                if self.transition_data.settings.is_mirror_camera:
+                if self.settings_transition_data.settings.is_mirror_camera:
                     self.buttons[2] = ControlBarButton(i18n.t('t.yes'), self.mirror_camera_btn_pressed)
                 else:
                     self.buttons[2] = ControlBarButton(i18n.t('t.no'), self.mirror_camera_btn_pressed)
 
                 self.reverse_keypad_label.config(text=f"{i18n.t('t.reverse_keypad')}")
                 self.reverse_keypad_label.place(relx=0.5, y=CONTROL_BAR_BUTTON_HEIGHT*3, height=CONTROL_BAR_BUTTON_HEIGHT, anchor=N)
-                if self.transition_data.settings.is_keypad_reverse:
+                if self.settings_transition_data.settings.is_keypad_reverse:
                     self.buttons[3] = ControlBarButton(i18n.t('t.yes'), self.reverse_keypad_btn_pressed)
                 else:
                     self.buttons[3] = ControlBarButton(i18n.t('t.no'), self.reverse_keypad_btn_pressed)

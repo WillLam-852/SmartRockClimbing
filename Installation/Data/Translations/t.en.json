@@ -35,7 +35,7 @@
         "game_mode_sequence": "Sequence mode",
         "game_mode_alphabet": "Spelling mode",
         "alphabet": "Alphabet",
-        "input_alphabet": "Please input alphabet of this point (a-z)",
+        "input_alphabet": "Please input alphabet of this point (A-Z)",
         "error": "Error",
         "error_path": "Path does not contain touch points. Pleaes add some points.",
         "paths": "Paths",

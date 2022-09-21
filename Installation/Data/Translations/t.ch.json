@@ -35,7 +35,7 @@
         "game_mode_sequence": "序列模式",
         "game_mode_alphabet": "拼寫模式",
         "alphabet": "英文字母",
-        "input_alphabet": "請輸入這點代表的英文字母 (a-z)",
+        "input_alphabet": "請輸入這點代表的英文字母 (A-Z)",
         "error": "錯誤",
         "error_path": "路徑不包含可接觸點，請重新設置。",
         "paths": "路徑",

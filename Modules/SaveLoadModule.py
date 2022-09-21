@@ -7,7 +7,7 @@ from typing import List
 from Models.Enums.GameMode import GAME_MODE
 from Models.SavedData.SavedRow import SavedRow
 from Models.Settings.Settings import Settings
-from Models.TransitionData import TransitionData
+from Models.SettingsTransitionData import SettingsTransitionData
 from Utilities.Constants import *
 from Utilities.OpenFile import open_file
 
@@ -78,10 +78,10 @@ class SaveLoadModule:
         return self.path_data
 
 
-    def save_path_data(self, transition_data: TransitionData):
+    def save_path_data(self, settings_transition_data: SettingsTransitionData):
         # Save path data
-        if len(transition_data.saved_rows) > 0:
-            for row in transition_data.saved_rows:
+        if len(settings_transition_data.saved_rows) > 0:
+            for row in settings_transition_data.saved_rows:
                 saved_row = [row.path_id, row.path_name, row.path_game_mode.value, row.point_x, row.point_y, row.point_is_good, row.point_order, row.point_alphabet]
                 df = pd.DataFrame([saved_row], columns=self.csv_column_names)
                 df.to_csv( open_file(PATH_FILE_LOCATION) )
@@ -91,7 +91,7 @@ class SaveLoadModule:
             df.to_csv( open_file(PATH_FILE_LOCATION) )
 
         # Save path images
-        for path_image in transition_data.updated_path_images:
+        for path_image in settings_transition_data.updated_path_images:
             cv2.imwrite(open_file(f"{PATH_IMAGE_FILE_LOCATION}{CURRENT_PATH_SET}_{path_image.path_id}.jpg"), path_image.image)
         
         # Delete old files
@@ -101,7 +101,7 @@ class SaveLoadModule:
         old_path_ids = list(set(old_path_ids))
         
         new_path_ids = []
-        for row in transition_data.saved_rows:
+        for row in settings_transition_data.saved_rows:
             new_path_ids.append(row.path_id)
         new_path_ids = list(set(new_path_ids))
 
@@ -113,10 +113,10 @@ class SaveLoadModule:
                 os.remove(old_file_name)
 
         # Rename files
-        for rename_path in transition_data.rename_paths:
+        for rename_path in settings_transition_data.renamed_paths:
             old_file_name = open_file(f"{PATH_IMAGE_FILE_LOCATION}{CURRENT_PATH_SET}_{rename_path.old_name}.jpg")
             new_file_name = open_file(f"{PATH_IMAGE_FILE_LOCATION}{CURRENT_PATH_SET}_{rename_path.new_name}.jpg")
             if os.path.exists(old_file_name):
                 os.rename(old_file_name, new_file_name)
 
-        self.path_data = transition_data.saved_rows
+        self.path_data = settings_transition_data.saved_rows

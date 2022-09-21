@@ -3,7 +3,7 @@ from Models.Path.RenamedPath import RenamedPath
 from Models.SavedData.SavedRow import SavedRow
 from Models.Settings.Settings import Settings
 
-class TransitionData:
+class SettingsTransitionData:
     """
     A class that used to transfer data between SettingsScreen, PathsScreen & CameraScreen in Settings
 

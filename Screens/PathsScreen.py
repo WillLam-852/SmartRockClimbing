@@ -14,7 +14,7 @@ from Models.Path.Path import Path
 from Models.Path.Point import Point
 from Models.Path.RenamedPath import RenamedPath
 from Models.SavedData.SavedRow import SavedRow
-from Models.TransitionData import TransitionData
+from Models.SettingsTransitionData import SettingsTransitionData
 from Widgets.ControlBarButton import ControlBarButton
 from Utilities.Constants import *
 
@@ -42,13 +42,13 @@ class PathsScreen(Frame):
 
     # Navigation Methods
 
-    def launch(self, camera_mode:CAMERA_MODE, transition_data:TransitionData=None):
+    def launch(self, camera_mode:CAMERA_MODE, settings_transition_data:SettingsTransitionData=None):
         """
         Parameters
         ----------
         camera_mode : CAMERA_MODE (GAME / SETTINGS)
             current camera mode
-        transition_data : SettingsAndPathData (Used in SETTINGS mode)
+        settings_transition_data : SettingsAndPathData (Used in SETTINGS mode)
             a class instance used to transfer data between SettingsScreen, PathsScreen & CameraScreen in Settings (None if Game mode)
         """
 
@@ -63,17 +63,17 @@ class PathsScreen(Frame):
             self.saved_rows = self.save_load_module.load_path_data()
             self.change_title(i18n.t('t.select_path'))
             self.buttons[3] = ControlBarButton(i18n.t('t.enter'), self.enter_btn_pressed)
-            self.buttons[9] = ControlBarButton(i18n.t('t.home'), lambda: self.navigate(SCREEN.HOME), THEME_COLOR_PURPLE)
+            self.buttons[9] = ControlBarButton(i18n.t('t.home'), lambda: self.navigate(SCREEN.HOME), bg=THEME_COLOR_PURPLE)
 
         elif self.camera_mode == CAMERA_MODE.SETTINGS:
-            self.transition_data = transition_data
-            self.saved_rows = transition_data.saved_rows
+            self.settings_transition_data = settings_transition_data
+            self.saved_rows = settings_transition_data.saved_rows
             self.change_title(f"{i18n.t('t.select_path')} ({i18n.t('t.configuration')})")
             self.buttons[3] = ControlBarButton(i18n.t('t.edit'), self.enter_btn_pressed)
             self.buttons[5] = ControlBarButton(i18n.t('t.add'), self.add_btn_pressed)
             self.buttons[6] = ControlBarButton(i18n.t('t.rename'), self.rename_btn_pressed)
             self.buttons[7] = ControlBarButton(i18n.t('t.delete'), self.delete_btn_pressed)
-            self.buttons[9] = ControlBarButton(i18n.t('t.done'), lambda: self.navigate(SCREEN.SETTINGS, self.transition_data), THEME_COLOR_PURPLE)
+            self.buttons[9] = ControlBarButton(i18n.t('t.done'), lambda: self.navigate(SCREEN.SETTINGS, settings_transition_data=self.settings_transition_data), bg=THEME_COLOR_PURPLE)
 
         self.change_buttons(self.buttons)
         self.gui_update()
@@ -107,7 +107,7 @@ class PathsScreen(Frame):
             if self.camera_mode == CAMERA_MODE.GAME:
                 self.navigate(SCREEN.CAMERA, camera_mode=CAMERA_MODE.GAME, path=selected_path)
             elif self.camera_mode == CAMERA_MODE.SETTINGS:
-                self.navigate(SCREEN.CAMERA, camera_mode=CAMERA_MODE.SETTINGS, path=selected_path, transition_data=self.transition_data)
+                self.navigate(SCREEN.CAMERA, camera_mode=CAMERA_MODE.SETTINGS, path=selected_path, settings_transition_data=self.settings_transition_data)
 
 
     def path_double_clicked(self, _):
@@ -121,7 +121,7 @@ class PathsScreen(Frame):
         if self.check_is_new_path_name_valid(new_name) == False:
             return
         new_path = Path(id=uuid.uuid1(), name=new_name, game_mode=GAME_MODE.OBSTACLE, points=[])
-        self.navigate(SCREEN.CAMERA, camera_mode=CAMERA_MODE.SETTINGS, path=new_path, transition_data=self.transition_data)
+        self.navigate(SCREEN.CAMERA, camera_mode=CAMERA_MODE.SETTINGS, path=new_path, settings_transition_data=self.settings_transition_data)
 
 
     def delete_btn_pressed(self):
@@ -135,7 +135,7 @@ class PathsScreen(Frame):
                     if row.path_id != selected_path.id:
                         new_path_data.append(row)
                 self.saved_rows = new_path_data
-                self.transition_data.saved_rows = new_path_data
+                self.settings_transition_data.saved_rows = new_path_data
                 self.gui_update()
 
 
@@ -148,7 +148,7 @@ class PathsScreen(Frame):
             for row in self.saved_rows:
                 if row.path_id == selected_path.id:
                     row.path_name = new_name
-            self.transition_data.renamed_paths.append(RenamedPath(old_name=selected_path.name, new_name=new_name))
+            self.settings_transition_data.renamed_paths.append(RenamedPath(old_name=selected_path.name, new_name=new_name))
             self.gui_update()
 
 
@@ -197,7 +197,7 @@ class PathsScreen(Frame):
         path_names: List[str] = []
         for row in self.saved_rows:
             gamemode_str = i18n.t(f't.game_mode_{str(row.path_game_mode.value)}')
-            path_names.append(f"{row[1]} ({gamemode_str})")
+            path_names.append(f"{row.path_name} ({gamemode_str})")
         path_names = list(set(path_names))
         for path_name in path_names:
             self.path_listbox.insert(END, path_name)

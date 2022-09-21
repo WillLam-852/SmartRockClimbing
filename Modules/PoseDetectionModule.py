@@ -161,8 +161,8 @@ class PoseDetectionModule:
 
 
     def get_body_point(self, result) -> Point:
-        x = int(result.x * self.camera_view_size.width)
-        y = int(result.y * self.camera_view_size.height)
+        x = float(result.x) * self.camera_view_size.width
+        y = float(result.y) * self.camera_view_size.height
         return Point(x=x, y=y)
 
 
@@ -175,8 +175,6 @@ class PoseDetectionModule:
         calculation_module = CalculationModule()
         angle = calculation_module.find_angle_between_three_points(pt1, pt2, pt3)
         return "{:.2f}".format(angle)
-
-
 
 
     # Methods for Setting up and Stopping Camera
@@ -200,6 +198,7 @@ class PoseDetectionModule:
             camera_resolution = Resolution(width=int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), height=int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))
             if DEBUG_MODE:
                 print(f"Camera Resolution: {camera_resolution.width}x{camera_resolution.height}")
+                self.debug_camera_point = None
 
             cap.release()
             return camera_resolution
@@ -262,7 +261,7 @@ class PoseDetectionModule:
             x, y = width - x, height - y
         if self.settings.is_mirror_camera:
             x = float(self.camera_view_size.width) - x
-        return Point(x=int(x), y=int(y), is_good=universal_point.is_good, order=universal_point.order, alphabet=universal_point.alphabet)
+        return Point(x=x, y=y, is_good=universal_point.is_good, order=universal_point.order, alphabet=universal_point.alphabet)
 
 
 #     def map_to_spelling_point(self, point_sequence):
@@ -283,9 +282,7 @@ class PoseDetectionModule:
             Point that user touches on screen
         """
         x, y = float(camera_point.x), float(camera_point.y)
-        print("x, y", x, y)
         width, height = float(self.camera_view_size.width), float(self.camera_view_size.height)
-        print("width, height", width, height)
         if self.settings.is_mirror_camera:
             x = width - x
         if self.settings.camera_orientation_mode == CAMERA_ORIENTATION.LEFT:
@@ -296,10 +293,8 @@ class PoseDetectionModule:
             width, height = height, width
         elif self.settings.camera_orientation_mode == CAMERA_ORIENTATION.INVERTED:
             x, y = width - x, height - y
-        print("before division x, y", x, y)
         x, y = x / width, y / height
-        print("after division x, y", x, y)
-        return Point(x=int(x), y=int(y), is_good=camera_point.is_good, order=camera_point.order, alphabet=camera_point.alphabet)
+        return Point(x=x, y=y, is_good=camera_point.is_good, order=camera_point.order, alphabet=camera_point.alphabet)
 
 
     # Game Mode Methods
@@ -490,10 +485,10 @@ class PoseDetectionModule:
         self.redo_history: list[list[Point]] = []
 
 
-    def settings_screen_pressed(self, point: Point):
-        print("point:", point.x, point.y)
-        new_universal_point = self.map_to_universal_point(camera_point=point)
-        print("new_universal_point:", new_universal_point.x, new_universal_point.y)
+    def settings_screen_pressed(self, camera_point: Point):
+        new_universal_point = self.map_to_universal_point(camera_point=camera_point)
+        if self.path.game_mode == GAME_MODE.SEQUENCE:
+            new_universal_point.order = len(self.universal_points_history[-1])
         new_universal_points = self.universal_points_history[-1] + [new_universal_point]
         self.universal_points_history.append(new_universal_points)
         self.redo_history.clear()
@@ -527,29 +522,27 @@ class PoseDetectionModule:
     def settings_show_game_points(self):
         if self.path.game_mode == GAME_MODE.OBSTACLE:
             for good_point in self.path.good_points:
-                print("good_point:", good_point.x, good_point.y)
                 good_camera_point = self.map_to_camera_point(universal_point=good_point)
-                print("good_camera_point:", good_camera_point.x, good_camera_point.y)
-                cv2.circle(self.resized_image, (good_camera_point.x, good_camera_point.y), DOT_RADIUS, GOOD_POINTS_COLOR, -1)
+                cv2.circle(self.resized_image, (int(good_camera_point.x), int(good_camera_point.y)), DOT_RADIUS, GOOD_POINTS_COLOR, -1)
             for bad_point in self.path.bad_points:
                 bad_camera_point = self.map_to_camera_point(bad_point)
-                cv2.circle(self.resized_image, (bad_camera_point.x, bad_camera_point.y), DOT_RADIUS, BAD_POINTS_COLOR, -1)
+                cv2.circle(self.resized_image, (int(bad_camera_point.x), int(bad_camera_point.y)), DOT_RADIUS, BAD_POINTS_COLOR, -1)
 
-        elif self.gamemode == GAME_MODE.SEQUENCE:
+        elif self.path.game_mode == GAME_MODE.SEQUENCE:
             for point in self.path.points:
                 camera_point = self.map_to_camera_point(universal_point=point)
-                cv2.circle(self.resized_image, (camera_point.x, camera_point.y), DOT_RADIUS, GOOD_POINTS_COLOR, -1)
-                cv2.putText(self.resized_image, str(point.order+1), (camera_point.x, camera_point.y), POINT_FONTFACE, POINT_FONTSCALE, POINT_TEXT_COLOR, POINT_TEXT_THICKNESS)
+                cv2.circle(self.resized_image, (int(camera_point.x), int(camera_point.y)), DOT_RADIUS, GOOD_POINTS_COLOR, -1)
+                cv2.putText(self.resized_image, str(point.order+1), (int(camera_point.x), int(camera_point.y)), POINT_FONTFACE, POINT_FONTSCALE, POINT_TEXT_COLOR, POINT_TEXT_THICKNESS)
         
-        elif self.gamemode == GAME_MODE.ALPHABET:
+        elif self.path.game_mode == GAME_MODE.ALPHABET:
             for point in self.path.points:
                 camera_point = self.map_to_camera_point(universal_point=point)
-                cv2.circle(self.resized_image, (camera_point.x, camera_point.y), DOT_RADIUS, GOOD_POINTS_COLOR, -1)
-                cv2.putText(self.resized_image, point.alphabet, (camera_point.x, camera_point.y), POINT_FONTFACE, POINT_FONTSCALE, POINT_TEXT_COLOR, POINT_TEXT_THICKNESS)
+                cv2.circle(self.resized_image, (int(camera_point.x), int(camera_point.y)), DOT_RADIUS, GOOD_POINTS_COLOR, -1)
+                cv2.putText(self.resized_image, point.alphabet, (int(camera_point.x), int(camera_point.y)), POINT_FONTFACE, POINT_FONTSCALE, POINT_TEXT_COLOR, POINT_TEXT_THICKNESS)
 
 
     def settings_done(self) -> tuple[Path, PathImage]:
-        saved_image = cv2.cvtColor(self.saved_image, cv2.COLOR_RGB2BGR)
+        saved_image = cv2.cvtColor(self.resized_image, cv2.COLOR_RGB2BGR)
         if self.settings.is_mirror_camera:
             saved_image = cv2.flip(saved_image, 1)
 
@@ -561,7 +554,7 @@ class PoseDetectionModule:
             saved_image = cv2.rotate(saved_image, cv2.ROTATE_180)
 
         path_image = PathImage(path_id=self.path.id, image=saved_image)
-        return tuple[self.path, path_image]
+        return self.path, path_image
 
 
     def camera_input(self):
@@ -665,10 +658,10 @@ class PoseDetectionModule:
             # Resize image to fit camera view size
             self.resized_image = cv2.resize(image.copy(), (self.camera_view_size.width, self.camera_view_size.height))
 
-#             # For Debugging, use mouse to simulate body point
-#             if DEBUG_MODE:
-#                 if self.debug_body_point:
-#                     cv2.circle(self.resized_image, self.debug_body_point, DOT_RADIUS, (0, 0, 255), -1)
+            # For Debugging, use mouse to simulate body point
+            if DEBUG_MODE:
+                if self.debug_camera_point:
+                    cv2.circle(self.resized_image, (int(self.debug_camera_point.x), int(self.debug_camera_point.y)), DOT_RADIUS, (0, 0, 255), -1)
 #                     if self.camera_mode == CAMERA_MODE.GAME:
 #                         debug_body_universal_point = self.map_to_universal_point(self.debug_body_point)
 #                         self.path.evaluate_body_point(debug_body_universal_point)
@@ -721,8 +714,8 @@ class PoseDetectionModule:
 
     # Debug Methods
 
-    def simulate_body_point(self, point=None):
-        if point:
-            self.debug_body_point = point
+    def simulate_body_point(self, camera_point:Point=None):
+        if camera_point:
+            self.debug_camera_point = camera_point
         else:
-            self.debug_body_point = None
+            self.debug_camera_point = None

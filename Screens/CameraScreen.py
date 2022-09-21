@@ -12,7 +12,7 @@ from Models.Path.Path import Path
 from Models.Path.Point import Point
 from Models.Resolution import Resolution
 from Models.SavedData.SavedRow import SavedRow
-from Models.TransitionData import TransitionData
+from Models.SettingsTransitionData import SettingsTransitionData
 from Modules.PoseDetectionModule import PoseDetectionModule
 from Modules.SaveLoadModule import SaveLoadModule
 from Utilities.Constants import *
@@ -49,15 +49,13 @@ class CameraScreen(Frame):
         self.save_load_module = SaveLoadModule()
         self.pose_detection_module = PoseDetectionModule()
         
-        self.settings_current_point_order = 0
-
 #         # self.countdown = None
 #         # self.timer = None
 
 
     # Navigation Methods
 
-    def launch(self, camera_mode:CAMERA_MODE, path:Path=None, transition_data:TransitionData=None):
+    def launch(self, camera_mode:CAMERA_MODE, path:Path=None, settings_transition_data:SettingsTransitionData=None):
         """
         Parameters
         ----------
@@ -67,7 +65,7 @@ class CameraScreen(Frame):
             current path information
         points : list[SavedPoint] (Used in GAME / SETTINGS mode)
             a list of points for this path
-        transition_data : SettingsAndPathData (Used in SETTINGS mode)
+        settings_transition_data : SettingsAndPathData (Used in SETTINGS mode)
             a class instance used to transfer data between SettingsScreen, PathsScreen & CameraScreen in Settings
         """
 
@@ -84,8 +82,8 @@ class CameraScreen(Frame):
             self.points = path.points
 
         elif self.camera_mode == CAMERA_MODE.SETTINGS:
-            self.transition_data = transition_data
-            self.settings = self.transition_data.settings
+            self.settings_transition_data = settings_transition_data
+            self.settings = self.settings_transition_data.settings
             self.path = path
             self.points = path.points
 
@@ -116,9 +114,9 @@ class CameraScreen(Frame):
         self.gui_buttons_set()
         self.change_camera_state(CAMERA_STATE.PLAYING)
 
-        if self.camera_mode == CAMERA_MODE.GAME or self.camera_mode == CAMERA_MODE.SETTINGS:            
-            path_name = self.path.name
-            self.change_title(path_name)
+        if self.camera_mode == CAMERA_MODE.GAME or self.camera_mode == CAMERA_MODE.SETTINGS:
+            gamemode_str = i18n.t(f't.game_mode_{str(self.path.game_mode.value)}')
+            self.change_title(f"{self.path.name} ({gamemode_str})")
 
             self.good_points_is_shown = True
             self.bad_points_is_shown = True
@@ -221,6 +219,9 @@ class CameraScreen(Frame):
 
 
     def screen_pressed_left(self, event):
+        if DEBUG_MODE:
+            self.pose_detection_module.simulate_body_point()
+
         if self.camera_mode == CAMERA_MODE.NORMAL:
             if self.camera_state == CAMERA_STATE.PAUSE:
                 point = Point(x=event.x, y=event.y)
@@ -237,26 +238,29 @@ class CameraScreen(Frame):
         elif self.camera_mode == CAMERA_MODE.SETTINGS:
             if self.path.game_mode == GAME_MODE.OBSTACLE:
                 good_point = Point(x=event.x, y=event.y, is_good=True)
-                self.pose_detection_module.settings_screen_pressed(point=good_point)
+                self.pose_detection_module.settings_screen_pressed(camera_point=good_point)
 
             elif self.path.game_mode == GAME_MODE.SEQUENCE:
-                point = Point(x=event.x, y=event.y, order=self.settings_current_point_order)
-                self.pose_detection_module.settings_screen_pressed(point=point)
-                self.settings_current_point_order += 1
+                point = Point(x=event.x, y=event.y)
+                self.pose_detection_module.settings_screen_pressed(camera_point=point)
 
             elif self.path.game_mode == GAME_MODE.ALPHABET:
                 alphabet = askstring(i18n.t('t.alphabet'), i18n.t('t.input_alphabet'))
+                if alphabet is None or len(alphabet) > 1:
+                    ctypes.windll.user32.MessageBoxW(0, i18n.t('t.input_alphabet'), i18n.t('t.error'), 0)
+                    return
+                alphabet = alphabet.upper()
+                if ord(alphabet) < ord('A') or ord(alphabet) > ord('Z'):
+                    ctypes.windll.user32.MessageBoxW(0, i18n.t('t.input_alphabet'), i18n.t('t.error'), 0)
+                    return
                 point = Point(x=event.x, y=event.y, alphabet=alphabet)
-                self.pose_detection_module.settings_screen_pressed(point=point)
-
-        if DEBUG_MODE:
-            self.pose_detection_module.simulate_body_point()
+                self.pose_detection_module.settings_screen_pressed(camera_point=point)
 
 
     def screen_pressed_right(self, event):
         if self.camera_mode == CAMERA_MODE.SETTINGS and self.path.game_mode == GAME_MODE.OBSTACLE:
             bad_point = Point(x=event.x, y=event.y, is_good=False)
-            self.pose_detection_module.settings_screen_pressed(point=bad_point)
+            self.pose_detection_module.settings_screen_pressed(camera_point=bad_point)
 
 
 #     # Button Actions (Game)
@@ -302,13 +306,12 @@ class CameraScreen(Frame):
     def settings_change_game_mode_btn_pressed(self):
         if self.path.game_mode == GAME_MODE.OBSTACLE:
             self.path.game_mode = GAME_MODE.SEQUENCE
-            self.change_title(self.path.name + ' (' + i18n.t('t.game_mode_sequence') + ') ')
         elif self.path.game_mode == GAME_MODE.SEQUENCE:
             self.path.game_mode = GAME_MODE.ALPHABET
-            self.change_title(self.path.name + ' (' + i18n.t('t.game_mode_alphabet') + ') ')
         elif self.path.game_mode == GAME_MODE.ALPHABET:
             self.path.game_mode = GAME_MODE.OBSTACLE
-            self.change_title(self.path.name + ' (' + i18n.t('t.game_mode_obstacle') + ') ')
+        gamemode_str = i18n.t(f't.game_mode_{str(self.path.game_mode.value)}')
+        self.change_title(f"{self.path.name} ({gamemode_str})")
         # Clear all points when change game mode
         self.path.update_points(points=[])
         self.pose_detection_module.settings_start(path=self.path)
@@ -324,11 +327,10 @@ class CameraScreen(Frame):
 
     def settings_clear_all_points_btn_pressed(self):
         self.pose_detection_module.settings_clear_all_points()
-        self.settings_current_point_order = 0
 
 
     def settings_cancel_btn_pressed(self):
-        self.navigate(SCREEN.PATHS, camera_mode=CAMERA_MODE.SETTINGS, transition_data=self.transition_data)
+        self.navigate(SCREEN.PATHS, camera_mode=CAMERA_MODE.SETTINGS, settings_transition_data=self.settings_transition_data)
 
 
     def settings_confirm_btn_pressed(self):
@@ -337,19 +339,19 @@ class CameraScreen(Frame):
         if not self.settings_confirm_validation(path=self.path):
             return
 
-        new_saved_rows: list[SavedRow] = self.transition_data.saved_rows.copy()
+        new_saved_rows: list[SavedRow] = self.settings_transition_data.saved_rows.copy()
 
         # Remove all points of this path
-        for row in self.transition_data.saved_rows:
+        for row in self.settings_transition_data.saved_rows:
             if row.path_id == self.path.id:
                 new_saved_rows.remove(row)
         # Add new points for this path
-        new_saved_rows += self.path.to_saved_rows
+        new_saved_rows.extend(self.path.to_saved_rows())
 
-        new_updated_path_images = self.transition_data.updated_path_images.copy().append(new_path_image)
-        new_transition_data = TransitionData(settings=self.settings, saved_rows=new_saved_rows, renamed_paths=self.transition_data.renamed_paths, updated_path_images=new_updated_path_images)
+        new_updated_path_images = self.settings_transition_data.updated_path_images + [new_path_image]
+        new_settings_transition_data = SettingsTransitionData(settings=self.settings, saved_rows=new_saved_rows, renamed_paths=self.settings_transition_data.renamed_paths, updated_path_images=new_updated_path_images)
 
-        self.navigate(SCREEN.PATHS, camera_mode=CAMERA_MODE.SETTINGS, transition_data=new_transition_data)
+        self.navigate(SCREEN.PATHS, camera_mode=CAMERA_MODE.SETTINGS, settings_transition_data=new_settings_transition_data)
 
 
     def settings_confirm_validation(self, path: Path) -> bool:
@@ -362,19 +364,16 @@ class CameraScreen(Frame):
                 # If there is no good point, show error message
                 ctypes.windll.user32.MessageBoxW(0, i18n.t('t.error_path'), i18n.t('t.error'), 0)
                 return False
-
         elif path.game_mode == GAME_MODE.SEQUENCE:
             if len(path.points) == 0:
                 # If there is no point, show error message
                 ctypes.windll.user32.MessageBoxW(0, i18n.t('t.error_path'), i18n.t('t.error'), 0)
                 return False
-
         elif path.game_mode == GAME_MODE.ALPHABET:
             if len(path.points) == 0:
                 # If there is no point, show error message
                 ctypes.windll.user32.MessageBoxW(0, i18n.t('t.error_path'), i18n.t('t.error'), 0)
                 return False
-
         return True
 
 
@@ -470,4 +469,5 @@ class CameraScreen(Frame):
     # Debug Methods
 
     def screen_moved(self, event):
-        self.pose_detection.simulate_body_point((event.x, event.y))
+        point = Point(x=event.x, y=event.y)
+        self.pose_detection_module.simulate_body_point(camera_point=point)
