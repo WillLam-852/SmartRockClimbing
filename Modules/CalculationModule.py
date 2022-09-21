@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 
 from Models.Calculation.CalculationResultWithImage import CalculationResultWithImage
-from Models.Point import Point
+from Models.Path import Point
 from Modules.SaveLoadModule import SaveLoadModule
 from Utilities.Constants import *
 

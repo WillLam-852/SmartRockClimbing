@@ -7,11 +7,14 @@ from tkinter.simpledialog import askstring
 from typing import List
 
 from Modules.SaveLoadModule import SaveLoadModule
-from Models.SavedData import SavedData, SavedPath, SavedPoint
-from Models.Paths.RenamedPath import RenamedPath
-from Models.Enums.Screen import SCREEN
 from Models.Enums.CameraMode import CAMERA_MODE
 from Models.Enums.GameMode import GAME_MODE
+from Models.Enums.Screen import SCREEN
+from Models.Path.Path import Path
+from Models.Path.Point import Point
+from Models.Path.RenamedPath import RenamedPath
+from Models.SavedData.SavedRow import SavedRow
+from Models.TransitionData import TransitionData
 from Widgets.ControlBarButton import ControlBarButton
 from Utilities.Constants import *
 
@@ -39,30 +42,38 @@ class PathsScreen(Frame):
 
     # Navigation Methods
 
-    def launch(self, camera_mode:CAMERA_MODE, settings_path_data=[], settings_path_images=[]):
+    def launch(self, camera_mode:CAMERA_MODE, transition_data:TransitionData=None):
+        """
+        Parameters
+        ----------
+        camera_mode : CAMERA_MODE (GAME / SETTINGS)
+            current camera mode
+        transition_data : SettingsAndPathData (Used in SETTINGS mode)
+            a class instance used to transfer data between SettingsScreen, PathsScreen & CameraScreen in Settings (None if Game mode)
+        """
+
         self.camera_mode = camera_mode
 
         self.buttons = {
             0: ControlBarButton("↑", self.up_btn_pressed),
             1: ControlBarButton("↓", self.down_btn_pressed),
-        }
+        } 
 
         if self.camera_mode == CAMERA_MODE.GAME:
-            self.path_data = self.save_load_module.load_path_data()
+            self.saved_rows = self.save_load_module.load_path_data()
             self.change_title(i18n.t('t.select_path'))
             self.buttons[3] = ControlBarButton(i18n.t('t.enter'), self.enter_btn_pressed)
             self.buttons[9] = ControlBarButton(i18n.t('t.home'), lambda: self.navigate(SCREEN.HOME), THEME_COLOR_PURPLE)
 
         elif self.camera_mode == CAMERA_MODE.SETTINGS:
-            self.path_data = settings_path_data
-            self.settings_renamed_paths: list[RenamedPath] = []
-            self.settings_path_images = settings_path_images
+            self.transition_data = transition_data
+            self.saved_rows = transition_data.saved_rows
             self.change_title(f"{i18n.t('t.select_path')} ({i18n.t('t.configuration')})")
             self.buttons[3] = ControlBarButton(i18n.t('t.edit'), self.enter_btn_pressed)
             self.buttons[5] = ControlBarButton(i18n.t('t.add'), self.add_btn_pressed)
             self.buttons[6] = ControlBarButton(i18n.t('t.rename'), self.rename_btn_pressed)
             self.buttons[7] = ControlBarButton(i18n.t('t.delete'), self.delete_btn_pressed)
-            self.buttons[9] = ControlBarButton(i18n.t('t.done'), lambda: self.navigate(SCREEN.SETTINGS, path_data=self.path_data, rename_paths=self.settings_renamed_paths, path_images=self.settings_path_images), THEME_COLOR_PURPLE)
+            self.buttons[9] = ControlBarButton(i18n.t('t.done'), lambda: self.navigate(SCREEN.SETTINGS, self.transition_data), THEME_COLOR_PURPLE)
 
         self.change_buttons(self.buttons)
         self.gui_update()
@@ -93,8 +104,10 @@ class PathsScreen(Frame):
     def enter_btn_pressed(self):
         selected_path = self.get_selected_path()
         if selected_path:
-            points = self.extract_point_list(selected_path.id)
-            self.navigate(SCREEN.CAMERA, camera_mode=self.camera_mode, path=selected_path, points=points)
+            if self.camera_mode == CAMERA_MODE.GAME:
+                self.navigate(SCREEN.CAMERA, camera_mode=CAMERA_MODE.GAME, path=selected_path)
+            elif self.camera_mode == CAMERA_MODE.SETTINGS:
+                self.navigate(SCREEN.CAMERA, camera_mode=CAMERA_MODE.SETTINGS, path=selected_path, transition_data=self.transition_data)
 
 
     def path_double_clicked(self, _):
@@ -107,8 +120,8 @@ class PathsScreen(Frame):
         new_name = askstring(i18n.t('t.rename_path'), i18n.t('t.what_is_the_name_of_new_path?'))
         if self.check_is_new_path_name_valid(new_name) == False:
             return
-        new_path = SavedPath(id=uuid.uuid1(), name=new_name, gamemode=GAME_MODE.OBSTACLE)
-        self.navigate(SCREEN.CAMERA, camera_mode=self.camera_mode, path=new_path, points=[])
+        new_path = Path(id=uuid.uuid1(), name=new_name, game_mode=GAME_MODE.OBSTACLE, points=[])
+        self.navigate(SCREEN.CAMERA, camera_mode=CAMERA_MODE.SETTINGS, path=new_path, transition_data=self.transition_data)
 
 
     def delete_btn_pressed(self):
@@ -117,11 +130,12 @@ class PathsScreen(Frame):
             # User pressed ok
             selected_path = self.get_selected_path()
             if selected_path:
-                new_path_file: List[SavedData] = []
-                for row in self.path_data:
+                new_path_data: List[SavedRow] = []
+                for row in self.saved_rows:
                     if row.path_id != selected_path.id:
-                        new_path_file.append(row)
-                self.path_data = new_path_file
+                        new_path_data.append(row)
+                self.saved_rows = new_path_data
+                self.transition_data.saved_rows = new_path_data
                 self.gui_update()
 
 
@@ -131,12 +145,10 @@ class PathsScreen(Frame):
             new_name = askstring(i18n.t('t.rename_path'), i18n.t('t.what_is_the_name_of_new_path?'))
             if self.check_is_new_path_name_valid(new_name) == False:
                 return
-            for row in self.path_data:
+            for row in self.saved_rows:
                 if row.path_id == selected_path.id:
                     row.path_name = new_name
-            self.settings_renamed_paths.append(
-                RenamedPath(old_name=selected_path.name, new_name=new_name)
-            )
+            self.transition_data.renamed_paths.append(RenamedPath(old_name=selected_path.name, new_name=new_name))
             self.gui_update()
 
 
@@ -144,7 +156,7 @@ class PathsScreen(Frame):
         if new_name is None or new_name == '':
             tkinter.messagebox.showwarning(title=i18n.t('t.warning'), message=i18n.t('t.invalid_path'))
             return False
-        for row in self.path_data:
+        for row in self.saved_rows:
             if row.path_name == new_name:
                 tkinter.messagebox.showwarning(title=i18n.t('t.warning'), message=i18n.t('t.invalid_path'))
                 return False
@@ -153,32 +165,25 @@ class PathsScreen(Frame):
 
     # Other Methods
 
-    def get_selected_path(self) -> SavedPath:
+    def get_selected_path(self) -> Path:
         if len(self.path_listbox.curselection()) != 0:
-            path_name = self.path_listbox.get(self.path_listbox.curselection()[0]).split(" (")[0]
-            path_id = None
-            path_gamemode = None
-            for row in self.path_data:
+            path_name: str = self.path_listbox.get(self.path_listbox.curselection()[0]).split(" (")[0]
+            path_id: str = None
+            path_gamemode: GAME_MODE = None
+            points: list[Point] = []
+            for row in self.saved_rows:
                 if path_name == row.path_name:
                     path_id = row.path_name
-                    path_gamemode = row.path_gamemode
-                    break
+                    path_gamemode = row.path_game_mode
+                    points.append(Point(x=row.point_x, y=row.point_y, is_good=row.point_is_good, order=row.point_order, alphabet=row.point_alphabet))
             if path_id and path_gamemode:
-                return SavedPath(
+                return Path(
                     id=path_id,
                     name=path_name,
-                    gamemode=path_gamemode
+                    game_mode=path_gamemode,
+                    points=points
                 )
         return None
-
-
-    def extract_point_list(self, path_id) -> list[SavedPoint]:
-        points: list[SavedPoint] = []
-        for row in self.path_data:
-            if row.path_id == path_id:
-                point = SavedPoint(x=row.point_x, y=row.point_y, is_good=row.point_is_good, order=row.point_order, alphabet=row.point_alphabet)
-                points.append(point)
-        return points
 
 
     # GUI Methods
@@ -190,8 +195,8 @@ class PathsScreen(Frame):
     def gui_update(self):
         self.path_listbox.delete(0, END)
         path_names: List[str] = []
-        for row in self.path_data:
-            gamemode_str = i18n.t(f't.game_mode_{str(row.path_gamemode.value)}')
+        for row in self.saved_rows:
+            gamemode_str = i18n.t(f't.game_mode_{str(row.path_game_mode.value)}')
             path_names.append(f"{row[1]} ({gamemode_str})")
         path_names = list(set(path_names))
         for path_name in path_names:

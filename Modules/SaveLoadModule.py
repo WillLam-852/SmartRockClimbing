@@ -1,11 +1,13 @@
+import cv2
+import os
 import pickle
-# import os
-from typing import List
-# import cv2
 import pandas as pd
-from Models.SavedData import SavedData
-from Models.Settings import Settings
+from typing import List
+
 from Models.Enums.GameMode import GAME_MODE
+from Models.SavedData.SavedRow import SavedRow
+from Models.Settings.Settings import Settings
+from Models.TransitionData import TransitionData
 from Utilities.Constants import *
 from Utilities.OpenFile import open_file
 
@@ -15,8 +17,7 @@ class SaveLoadModule:
     def __init__(self):
         self.settings = Settings()
         self.locale = 'ch'
-        self.path_data: List[SavedData] = []
-        self.path_images = []
+        self.path_data: List[SavedRow] = []
 
 
     def load_settings(self) -> Settings:
@@ -55,64 +56,67 @@ class SaveLoadModule:
         self.locale = locale
 
 
-    def load_path_data(self) -> List[SavedData]:
+    def load_path_data(self) -> List[SavedRow]:
         try:
             df = pd.read_csv( open_file(PATH_FILE_LOCATION), usecols=self.csv_column_names, keep_default_na=False).sort_values(by=['path_id'])
-            savedFile: List[SavedData] = []
+            savedRows: List[SavedRow] = []
             for row in df.values.tolist():
-                savedData = SavedData(
+                savedData = SavedRow(
                     path_id=row[PATH_ID], 
                     path_name=row[PATH_NAME], 
-                    path_gamemode=GAME_MODE(row[PATH_GAMEMODE]), 
+                    path_game_mode=GAME_MODE(row[PATH_GAMEMODE]), 
                     point_x=int(row[POINT_X]),
                     point_y=int(row[POINT_Y]),
                     point_is_good=row[POINT_IS_GOOD],
                     point_order=int(row[POINT_ORDER]),
                     point_alphabet=row[POINT_ALPHABET]
                 )
-                savedFile.append(savedData)
-            self.path_data = savedFile
+                savedRows.append(savedData)
+            self.path_data = savedRows
         except:
             self.save_path_data(self.path_data)
         return self.path_data
 
 
-    # def save_path_data(self, path_data, rename_paths=[], path_images=[]):
-    #     if len(path_data) > 0:
-    #         df = pd.DataFrame(path_data, columns=self.csv_column_names)
-    #         df.to_csv( open_file(PATH_FILE_LOCATION) )
-    #     else:
-    #         df = pd.DataFrame([['','','','','','','','']], columns=self.csv_column_names)
-    #         df = df[df.path_id != '']
-    #         df.to_csv( open_file(PATH_FILE_LOCATION) )
+    def save_path_data(self, transition_data: TransitionData):
+        # Save path data
+        if len(transition_data.saved_rows) > 0:
+            for row in transition_data.saved_rows:
+                saved_row = [row.path_id, row.path_name, row.path_game_mode.value, row.point_x, row.point_y, row.point_is_good, row.point_order, row.point_alphabet]
+                df = pd.DataFrame([saved_row], columns=self.csv_column_names)
+                df.to_csv( open_file(PATH_FILE_LOCATION) )
+        else:
+            df = pd.DataFrame([['','','','','','','','']], columns=self.csv_column_names)
+            df = df[df.path_id != '']
+            df.to_csv( open_file(PATH_FILE_LOCATION) )
 
-    #     # Save path images
-    #     for image in path_images:
-    #         cv2.imwrite(open_file(f"{PATH_IMAGE_FILE_LOCATION}{CURRENT_PATH_SET}_{image[0]}.jpg"), image[1])
+        # Save path images
+        for path_image in transition_data.updated_path_images:
+            cv2.imwrite(open_file(f"{PATH_IMAGE_FILE_LOCATION}{CURRENT_PATH_SET}_{path_image.path_id}.jpg"), path_image.image)
         
-    #     # Delete old files
-    #     old_path_ids = []
-    #     for row in self.path_data:
-    #         old_path_ids.append(row[0])
-    #     old_path_ids = list(set(old_path_ids))
+        # Delete old files
+        old_path_ids = []
+        for row in self.path_data:
+            old_path_ids.append(row.path_id)
+        old_path_ids = list(set(old_path_ids))
         
-    #     new_path_ids = []
-    #     for row in path_data:
-    #         new_path_ids.append(row[0])
-    #     new_path_ids = list(set(new_path_ids))
+        new_path_ids = []
+        for row in transition_data.saved_rows:
+            new_path_ids.append(row.path_id)
+        new_path_ids = list(set(new_path_ids))
 
-    #     deleted_path_ids = list(set(old_path_ids) - set(new_path_ids))
+        deleted_path_ids = list(set(old_path_ids) - set(new_path_ids))
 
-    #     for row in deleted_path_ids:
-    #         old_file_name = open_file(f"{PATH_IMAGE_FILE_LOCATION}{CURRENT_PATH_SET}_{row}.jpg")
-    #         if os.path.exists(old_file_name):
-    #             os.remove(old_file_name)
+        for row in deleted_path_ids:
+            old_file_name = open_file(f"{PATH_IMAGE_FILE_LOCATION}{CURRENT_PATH_SET}_{row}.jpg")
+            if os.path.exists(old_file_name):
+                os.remove(old_file_name)
 
-    #     # Rename files
-    #     for rename_path in rename_paths:
-    #         old_file_name = open_file(f"{PATH_IMAGE_FILE_LOCATION}{CURRENT_PATH_SET}_{rename_path[0]}.jpg")
-    #         new_file_name = open_file(f"{PATH_IMAGE_FILE_LOCATION}{CURRENT_PATH_SET}_{rename_path[1]}.jpg")
-    #         if os.path.exists(old_file_name):
-    #             os.rename(old_file_name, new_file_name)
+        # Rename files
+        for rename_path in transition_data.rename_paths:
+            old_file_name = open_file(f"{PATH_IMAGE_FILE_LOCATION}{CURRENT_PATH_SET}_{rename_path.old_name}.jpg")
+            new_file_name = open_file(f"{PATH_IMAGE_FILE_LOCATION}{CURRENT_PATH_SET}_{rename_path.new_name}.jpg")
+            if os.path.exists(old_file_name):
+                os.rename(old_file_name, new_file_name)
 
-    #     self.path_data = path_data
+        self.path_data = transition_data.saved_rows

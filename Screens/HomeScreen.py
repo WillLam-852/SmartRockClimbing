@@ -4,7 +4,7 @@ import os
 import sys
 import PIL.Image, PIL.ImageTk
 from tkinter import *
-from Models.Camera.Resolution import Resolution
+from Models.Resolution import Resolution
 from Models.Enums.CameraMode import CAMERA_MODE
 
 from Widgets.ControlBarButton import ControlBarButton
@@ -88,11 +88,11 @@ class HomeScreen(Frame):
         i18n.set('locale', self.locale)
         self.change_title(i18n.t('t.home'))
         self.buttons = {
-            0: ControlBarButton(i18n.t('t.camera'), lambda: self.navigate(SCREEN.CAMERA)),
+            0: ControlBarButton(i18n.t('t.camera'), lambda: self.navigate(SCREEN.CAMERA, camera_mode=CAMERA_MODE.NORMAL)),
             1: ControlBarButton(i18n.t('t.game'), lambda: self.navigate(SCREEN.PATHS, camera_mode=CAMERA_MODE.GAME)),
             # 2: ControlBarButton(i18n.t('t.recordings'), lambda: self.navigate(SCREEN.RECORDINGS)),
             6: ControlBarButton(i18n.t('t.current_locale'), lambda: self.change_locale_btn_pressed()),
-            # 7: ControlBarButton(i18n.t('t.settings'), lambda: self.navigate(SCREEN.SETTINGS)),
+            7: ControlBarButton(i18n.t('t.settings'), lambda: self.navigate(SCREEN.SETTINGS)),
             8: ControlBarButton(i18n.t('t.restart_program'), self.show_restart_alert, THEME_COLOR_PINK),
             9: ControlBarButton(i18n.t('t.exit_program'), self.show_exit_alert, THEME_COLOR_PINK)
         }

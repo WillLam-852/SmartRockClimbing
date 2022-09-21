@@ -1,11 +1,13 @@
 import ctypes
+from pprint import isrecursive
 import i18n
 import gc
 from tkinter import *
-from Models.Camera.Resolution import Resolution
+from Models.Resolution import Resolution
 from Models.Enums.CameraMode import CAMERA_MODE
 
 from Models.Enums.Screen import SCREEN
+from Models.TransitionData import TransitionData
 from Modules.SaveLoadModule import SaveLoadModule
 from Utilities.OpenFile import open_file
 from Utilities.Constants import *
@@ -15,6 +17,7 @@ from Widgets.ControlBar import ControlBar
 from Screens.HomeScreen import HomeScreen
 from Screens.CameraScreen import CameraScreen
 from Screens.PathsScreen import PathsScreen
+from Screens.SettingsScreen import SettingsScreen
 
 class SmartRockClimbing:
 
@@ -37,10 +40,12 @@ class SmartRockClimbing:
         self.current_screen = None
 
         self.gui_set()
-        self.is_reverse_keypad = SaveLoadModule().load_settings().is_reverse_keypad
+        self.is_keypad_reverse = SaveLoadModule().load_settings().is_keypad_reverse
 
         if DEBUG_MODE:
-            self.navigate(SCREEN.PATHS, camera_mode=CAMERA_MODE.GAME)
+            transition_data = TransitionData(settings=SaveLoadModule().load_settings(), saved_rows=[], renamed_paths=[], updated_path_images=[])
+            self.navigate(SCREEN.PATHS, camera_mode=CAMERA_MODE.SETTINGS, transition_data=transition_data)
+            # self.navigate(SCREEN.HOME)
         else:
             self.navigate(SCREEN.HOME)
 
@@ -83,8 +88,16 @@ class SmartRockClimbing:
         #     self.current_screen = self.recordings_view
         # elif screen_to == SCREEN.VIDEO:
         #     self.current_screen = self.video_view
-        # elif screen_to == SCREEN.SETTINGS:
-        #     self.current_screen = self.settings_view
+        elif screen_to == SCREEN.SETTINGS:
+            self.current_screen = SettingsScreen(
+                self.root, 
+                view_size=self.view_size, 
+                navigate=self.navigate, 
+                change_title=self.change_title, 
+                change_buttons=self.change_buttons,
+                change_keypad=self.change_keypad,
+                bg=THEME_COLOR
+            )
         self.current_screen.launch(**kwargs)
         self.current_screen.place(y=TOP_BAR_HEIGHT, width=self.view_size.width, height=self.view_size.height)
 
@@ -106,7 +119,11 @@ class SmartRockClimbing:
     # Key Press Actions
 
     def key_up(self, e):
-        self.control_bar.invoke_button(e.char, self.is_reverse_keypad)
+        self.control_bar.invoke_button(e.char, self.is_keypad_reverse)
+
+    def change_keypad(self, is_reverse):
+        self.is_keypad_reverse = is_reverse
+        self.root.bind("<KeyRelease>", self.key_up)
 
 
     # GUI Methods

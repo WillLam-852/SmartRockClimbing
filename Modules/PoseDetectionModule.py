@@ -1,4 +1,5 @@
 import copy
+from tkinter import Label
 # import time
 import cv2
 import datetime
@@ -6,19 +7,18 @@ import csv
 import mediapipe as mp
 # from typing import Any
 from PIL import Image, ImageTk
-from Models.Calculation.CalculationResult import CalculationResult
-from Models.Camera.Resolution import Resolution
 
 from Models.Enums.CameraMode import CAMERA_MODE
 from Models.Enums.CameraOrientation import CAMERA_ORIENTATION
 from Models.Enums.CameraState import CAMERA_STATE
-from Models.Point import Point
-from Models.Settings import Settings
+from Models.Calculation.CalculationResult import CalculationResult
+from Models.Enums.GameMode import GAME_MODE
+from Models.Path.Path import Path
+from Models.Path.PathImage import PathImage
+from Models.Path.Point import Point
+from Models.Resolution import Resolution
+from Models.Settings.Settings import Settings
 from Modules.CalculationModule import CalculationModule
-# from Models.Enums.GameMode import GAME_MODE
-# from Models.SavedData import SavedPoint
-# from Modules.CalculationModule import *
-# from Modules.SoundModule import SoundModule
 from Utilities.Constants import *
 from Utilities.OpenFile import open_file
 
@@ -182,12 +182,8 @@ class PoseDetectionModule:
     # Methods for Setting up and Stopping Camera
 
     def get_camera_resolution(self, camera_number: int) -> Resolution:
-#         self.ground_screen_ratio = self.settings.ground_ratio_calibration_actual_value
-#         self.is_distance_calibration_shown = False
-
-        cap = cv2.VideoCapture(camera_number, cv2.CAP_DSHOW)
-
         try:
+            cap = cv2.VideoCapture(camera_number, cv2.CAP_DSHOW)
             cap.read()
 
             if DEBUG_MODE:
@@ -195,6 +191,11 @@ class PoseDetectionModule:
                     cap.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_RESOLUTION_WIDTH)
                 if CAMERA_RESOLUTION_HEIGHT:
                     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_RESOLUTION_HEIGHT)
+
+
+            if int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)) == 0 or int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)) == 0:
+                cap.release()
+                return None
 
             camera_resolution = Resolution(width=int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), height=int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))
             if DEBUG_MODE:
@@ -205,17 +206,17 @@ class PoseDetectionModule:
 
         except:
             # No camera is detected
+            print("ERROR: No camera is detected")
             cap.release()
             return None
 
 
-    def set_camera_input(self, camera_view, camera_view_size: Resolution, camera_number: int, camera_resolution: Resolution, settings: Settings):
+    def set_camera_input(self, camera_view: Label, camera_view_size: Resolution, camera_number: int, camera_resolution: Resolution, settings: Settings):
         self.cap = cv2.VideoCapture(camera_number, cv2.CAP_DSHOW)
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, camera_resolution.width)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, camera_resolution.height)
         self.camera_resolution = camera_resolution
-        self.camera_view = camera_view
-        self.camera_view_size = camera_view_size
+        self.update_camera_view(camera_view=camera_view, size=camera_view_size)
         # self.sound_module = SoundModule()
         self.pose = mp_pose.Pose(
             min_detection_confidence=0.5,   
@@ -224,28 +225,45 @@ class PoseDetectionModule:
         self.camera_state = CAMERA_STATE.PLAYING
         self.camera_mode = CAMERA_MODE.NORMAL
         self.settings = settings
+        self.is_distance_calibration_shown = False
 
 
-#     def update_settings(self, settings, is_distance_calibration_shown=False):
-#         self.settings = settings
-#         self.is_distance_calibration_shown = is_distance_calibration_shown
-#         self.ground_screen_ratio = self.settings.ground_ratio_calibration_actual_value
+    def update_settings(self, settings: Settings, is_distance_calibration_shown=False):
+        self.settings = settings
+        self.is_distance_calibration_shown = is_distance_calibration_shown
 
+
+    def update_camera_view(self, camera_view: Label, size: Resolution):
+        self.camera_view = camera_view
+        self.camera_view_size = size
+
+
+    # Methods of Mapping Points
     
-#     def map_to_camera_point(self, point):
-#         width, height = self.camera_view_width, self.camera_view_height
-#         if self.settings.camera_orientation_mode == CAMERA_ORIENTATION.LEFT or self.settings.camera_orientation_mode == CAMERA_ORIENTATION.RIGHT:
-#             width, height = height, width
-#         x, y = int(point[0] * width), int(point[1] * height)
-#         if self.settings.camera_orientation_mode == CAMERA_ORIENTATION.LEFT:
-#             x, y = y, width - x
-#         elif self.settings.camera_orientation_mode == CAMERA_ORIENTATION.RIGHT:
-#             x, y = height - y, x
-#         elif self.settings.camera_orientation_mode == CAMERA_ORIENTATION.INVERTED:
-#             x, y = width - x, height - y
-#         if self.settings.mirror_camera:
-#             x = self.camera_view_width - x
-#         return (x, y)
+    def map_to_camera_point(self, universal_point: Point) -> Point:
+        """
+        Translate a universal point (saved in .csv file) to a camera point (touch on screen)
+        
+        Parameters
+        ----------
+        universal_point: Point
+            universal point (saved in .csv file)
+        """
+        x, y = float(universal_point.x), float(universal_point.y)
+        width, height = float(self.camera_view_size.width), float(self.camera_view_size.height)
+        if self.settings.camera_orientation_mode == CAMERA_ORIENTATION.LEFT or self.settings.camera_orientation_mode == CAMERA_ORIENTATION.RIGHT:
+            width, height = height, width
+        x, y = x * width, y * height
+        if self.settings.camera_orientation_mode == CAMERA_ORIENTATION.LEFT:
+            x, y = y, width - x
+        elif self.settings.camera_orientation_mode == CAMERA_ORIENTATION.RIGHT:
+            x, y = height - y, x
+        elif self.settings.camera_orientation_mode == CAMERA_ORIENTATION.INVERTED:
+            x, y = width - x, height - y
+        if self.settings.is_mirror_camera:
+            x = float(self.camera_view_size.width) - x
+        return Point(x=int(x), y=int(y), is_good=universal_point.is_good, order=universal_point.order, alphabet=universal_point.alphabet)
+
 
 #     def map_to_spelling_point(self, point_sequence):
 #         width, height = self.camera_view_width / 10, self.camera_view_height * 9 / 10
@@ -255,42 +273,54 @@ class PoseDetectionModule:
 #         return (width, height)
 
 
-#     def map_to_universal_point(self, point):
-#         x, y = float(point[0]), float(point[1])
-#         width, height = self.camera_view_width, self.camera_view_height
-#         if self.settings.mirror_camera:
-#             x = width - x
-#         if self.settings.camera_orientation_mode == CAMERA_ORIENTATION.LEFT:
-#             x, y = height - y, x
-#             width, height = height, width
-#         elif self.settings.camera_orientation_mode == CAMERA_ORIENTATION.RIGHT:
-#             x, y = y, width - x
-#             width, height = height, width
-#         elif self.settings.camera_orientation_mode == CAMERA_ORIENTATION.INVERTED:
-#             x, y = width - x, height - y
-#         x, y = x / width, y / height
-#         return (x, y)
+    def map_to_universal_point(self, camera_point: Point) -> Point:
+        """
+        Translate a camera point (touch on screen) to a universal point (saved in .csv file)
+        
+        Parameters
+        ----------
+        camera_point: Point
+            Point that user touches on screen
+        """
+        x, y = float(camera_point.x), float(camera_point.y)
+        print("x, y", x, y)
+        width, height = float(self.camera_view_size.width), float(self.camera_view_size.height)
+        print("width, height", width, height)
+        if self.settings.is_mirror_camera:
+            x = width - x
+        if self.settings.camera_orientation_mode == CAMERA_ORIENTATION.LEFT:
+            x, y = height - y, x
+            width, height = height, width
+        elif self.settings.camera_orientation_mode == CAMERA_ORIENTATION.RIGHT:
+            x, y = y, width - x
+            width, height = height, width
+        elif self.settings.camera_orientation_mode == CAMERA_ORIENTATION.INVERTED:
+            x, y = width - x, height - y
+        print("before division x, y", x, y)
+        x, y = x / width, y / height
+        print("after division x, y", x, y)
+        return Point(x=int(x), y=int(y), is_good=camera_point.is_good, order=camera_point.order, alphabet=camera_point.alphabet)
 
 
-#     # Game Mode Methods
+    # Game Mode Methods
 
-#     def game_start(self, path_id, points: list[SavedPoint], gamemode, progress_callback):
-#         self.camera_mode = CAMERA_MODE.GAME
-#         self.path_id = path_id
-#         self.universal_points = points
-#         self.universal_points_history = [self.universal_points.copy()]
-#         self.redo_history = []
-#         self.gamemode = gamemode
-#         self.is_good_points_shown = False
-#         self.is_bad_points_shown = False
-#         self.update_progress_label = progress_callback
-#         self.spelling_point_list = []
-#         self.point_index = 0
-#         self.foot_touch_ground_time = 0
-#         self.time_threshold = 100
-#         self.then = time.time_ns() // 1_000_000
-#         self.test_frames = []
-#         self.game_test_frame_rate()
+    # def game_start(self, path_id, points: list[Point], gamemode, progress_callback):
+    #     self.camera_mode = CAMERA_MODE.GAME
+    #     self.path_id = path_id
+    #     self.universal_points = points
+    #     self.universal_points_history = [self.universal_points.copy()]
+    #     self.redo_history = []
+    #     self.gamemode = gamemode
+    #     self.is_good_points_shown = False
+    #     self.is_bad_points_shown = False
+    #     self.update_progress_label = progress_callback
+    #     self.spelling_point_list = []
+    #     self.point_index = 0
+    #     self.foot_touch_ground_time = 0
+    #     self.time_threshold = 100
+    #     self.then = time.time_ns() // 1_000_000
+    #     self.test_frames = []
+    #     self.game_test_frame_rate()
 
 
 #     def game_toggle_show_good_points(self, is_shown):
@@ -299,10 +329,6 @@ class PoseDetectionModule:
 
 #     def game_toggle_show_bad_points(self, is_shown):
 #         self.is_bad_points_shown = is_shown
-
-
-#     def game_change_game_mode(self, gamemode):
-#         self.gamemode = gamemode
 
 
 #     def game_calculate_pose(self, path, pose_landmarks):
@@ -455,83 +481,94 @@ class PoseDetectionModule:
 #                 self.sound_module.countdown()
 
 
-#     # Setting Game Path Methods
+    # Setting Game Path Methods
 
-#     def settings_start(self, path_id: str, points: list[SavedPoint], gamemode: GAME_MODE):
-#         self.camera_mode = CAMERA_MODE.SETTINGS
-#         self.path_id = path_id
-#         self.universal_points = points
-#         self.universal_points_history = [self.universal_points.copy()]
-#         self.redo_history = []
-#         self.gamemode = gamemode
-#         self.spelling_point_list = []
-#         self.point_index = 0
-#         self.path = Path(self.path_id, self.universal_points, self.gamemode)
-
-#     def settings_game_screen_pressed(self, point, is_good, point_squence, alphabet, gamemode):
-#         universal_point = self.map_to_universal_point(point)
-#         self.universal_points.append((universal_point[0], universal_point[1], is_good, point_squence, alphabet, gamemode.value))
-#         self.path.update_points(self.universal_points)
-#         self.universal_points_history.append(self.universal_points.copy())
-#         self.redo_history.clear()
+    def settings_start(self, path: Path):
+        self.camera_mode = CAMERA_MODE.SETTINGS
+        self.path: Path = path
+        self.universal_points_history: list[list[Point]] = [self.path.points.copy()]
+        self.redo_history: list[list[Point]] = []
 
 
-#     def settings_path_undo(self):
-#         if len(self.universal_points_history) > 1:
-#             self.redo_history.append(self.universal_points.copy())
-#             self.universal_points_history.pop()
-#             self.universal_points = self.universal_points_history[-1].copy()
-#             self.path.update_points(self.universal_points)
+    def settings_screen_pressed(self, point: Point):
+        print("point:", point.x, point.y)
+        new_universal_point = self.map_to_universal_point(camera_point=point)
+        print("new_universal_point:", new_universal_point.x, new_universal_point.y)
+        new_universal_points = self.universal_points_history[-1] + [new_universal_point]
+        self.universal_points_history.append(new_universal_points)
+        self.redo_history.clear()
+        self.path.update_points(points=new_universal_points)
+        
+
+    def settings_undo(self):
+        if len(self.universal_points_history) > 1:
+            old_universal_points = self.universal_points_history.pop().copy()
+            new_universal_points = self.universal_points_history[-1].copy()
+            self.redo_history.append(old_universal_points)
+            self.path.update_points(points=new_universal_points)
 
 
-#     def settings_path_redo(self):
-#         if len(self.redo_history) > 0:
-#             self.universal_points = self.redo_history.pop()
-#             self.universal_points_history.append(self.universal_points.copy())
-#             self.path.update_points(self.universal_points)
+    def settings_redo(self):
+        if len(self.redo_history) > 0:
+            new_universal_points = self.redo_history.pop().copy()
+            self.universal_points_history.append(new_universal_points)
+            self.path.update_points(points=new_universal_points)
 
 
-#     def settings_path_clear_all_points(self):
-#         if len(self.universal_points) > 0:
-#             self.universal_points = []
-#             self.path.update_points(self.universal_points)
-#             self.universal_points_history.append(self.universal_points.copy())
-#             self.redo_history.clear()
+    def settings_clear_all_points(self):
+        universal_points = self.universal_points_history[-1].copy()
+        if len(universal_points) > 0:
+            new_universal_points: list[Point] = []
+            self.universal_points_history.append(new_universal_points)
+            self.redo_history.clear()
+            self.path.update_points(points=new_universal_points)
 
 
-#     def settings_show_game_points(self, path):
-#         if path:
-#             for point in self.path.good_points:
-#                 camera_point = self.map_to_camera_point(point)
-#                 cv2.circle(self.resized_image, camera_point, DOT_RADIUS, GOOD_POINTS_COLOR, -1)
-#                 if self.gamemode == GAME_MODE.SEQUENCE:
-#                     cv2.putText(self.resized_image, str(point[3]+1), camera_point, POINT_FONTFACE, POINT_FONTSCALE, POINT_TEXT_COLOR, POINT_TEXT_THICKNESS)
-#                 elif self.gamemode == GAME_MODE.ALPHABET:
-#                     cv2.putText(self.resized_image, str(point[4]), camera_point, POINT_FONTFACE, POINT_FONTSCALE, POINT_TEXT_COLOR, POINT_TEXT_THICKNESS)
-#             for point in self.path.bad_points:
-#                 camera_point = self.map_to_camera_point(point)
-#                 cv2.circle(self.resized_image, camera_point, DOT_RADIUS, BAD_POINTS_COLOR, -1)
+    def settings_show_game_points(self):
+        if self.path.game_mode == GAME_MODE.OBSTACLE:
+            for good_point in self.path.good_points:
+                print("good_point:", good_point.x, good_point.y)
+                good_camera_point = self.map_to_camera_point(universal_point=good_point)
+                print("good_camera_point:", good_camera_point.x, good_camera_point.y)
+                cv2.circle(self.resized_image, (good_camera_point.x, good_camera_point.y), DOT_RADIUS, GOOD_POINTS_COLOR, -1)
+            for bad_point in self.path.bad_points:
+                bad_camera_point = self.map_to_camera_point(bad_point)
+                cv2.circle(self.resized_image, (bad_camera_point.x, bad_camera_point.y), DOT_RADIUS, BAD_POINTS_COLOR, -1)
+
+        elif self.gamemode == GAME_MODE.SEQUENCE:
+            for point in self.path.points:
+                camera_point = self.map_to_camera_point(universal_point=point)
+                cv2.circle(self.resized_image, (camera_point.x, camera_point.y), DOT_RADIUS, GOOD_POINTS_COLOR, -1)
+                cv2.putText(self.resized_image, str(point.order+1), (camera_point.x, camera_point.y), POINT_FONTFACE, POINT_FONTSCALE, POINT_TEXT_COLOR, POINT_TEXT_THICKNESS)
+        
+        elif self.gamemode == GAME_MODE.ALPHABET:
+            for point in self.path.points:
+                camera_point = self.map_to_camera_point(universal_point=point)
+                cv2.circle(self.resized_image, (camera_point.x, camera_point.y), DOT_RADIUS, GOOD_POINTS_COLOR, -1)
+                cv2.putText(self.resized_image, point.alphabet, (camera_point.x, camera_point.y), POINT_FONTFACE, POINT_FONTSCALE, POINT_TEXT_COLOR, POINT_TEXT_THICKNESS)
 
 
-#     def settings_path_done(self) -> tuple[list[SavedPoint], Any]:
-#         self.image = cv2.cvtColor(self.image, cv2.COLOR_RGB2BGR)
-#         if self.settings.mirror_camera:
-#             self.image = cv2.flip(self.image, 1)
-#         if self.settings.camera_orientation_mode == CAMERA_ORIENTATION.LEFT:
-#             self.image = cv2.rotate(self.image, cv2.ROTATE_90_CLOCKWISE)
-#         elif self.settings.camera_orientation_mode == CAMERA_ORIENTATION.RIGHT:
-#             self.image = cv2.rotate(self.image, cv2.ROTATE_90_COUNTERCLOCKWISE)
-#         elif self.settings.camera_orientation_mode == CAMERA_ORIENTATION.INVERTED:
-#             self.image = cv2.rotate(self.image, cv2.ROTATE_180)
-#         return self.universal_points, self.image
+    def settings_done(self) -> tuple[Path, PathImage]:
+        saved_image = cv2.cvtColor(self.saved_image, cv2.COLOR_RGB2BGR)
+        if self.settings.is_mirror_camera:
+            saved_image = cv2.flip(saved_image, 1)
+
+        if self.settings.camera_orientation_mode == CAMERA_ORIENTATION.LEFT:
+            saved_image = cv2.rotate(saved_image, cv2.ROTATE_90_CLOCKWISE)
+        elif self.settings.camera_orientation_mode == CAMERA_ORIENTATION.RIGHT:
+            saved_image = cv2.rotate(saved_image, cv2.ROTATE_90_COUNTERCLOCKWISE)
+        elif self.settings.camera_orientation_mode == CAMERA_ORIENTATION.INVERTED:
+            saved_image = cv2.rotate(saved_image, cv2.ROTATE_180)
+
+        path_image = PathImage(path_id=self.path.id, image=saved_image)
+        return tuple[self.path, path_image]
 
 
-    def cameraInput(self):
+    def camera_input(self):
         """
         Start webcam input & pose detection (Call Repeatedly)
         """
         if self.cap.isOpened():
-
             # Read the webcam input from openCV
             success, image = self.cap.read()
             if not success:
@@ -645,17 +682,19 @@ class PoseDetectionModule:
 #                 if self.gamemode == GAME_MODE.ALPHABET:
 #                     self.game_show_alphabets(self.path)
 
-#             # Show Game Points (Settings)
-#             elif self.camera_mode == CAMERA_MODE.SETTINGS:
-#                 self.settings_show_game_points(self.path)
+            # Show Game Points (Settings)
+            if self.camera_mode == CAMERA_MODE.SETTINGS:
+                self.settings_show_game_points()
 
 #             # If Calibration is on,
 #             #   show a yellow horizontal line with CALIBRATION_PIXELS (default: 100)
 #             #   and a white horizontal line for ground level
-#             if self.is_distance_calibration_shown:
-#                 cv2.line(self.resized_image, (int(self.camera_view_width/2-CALIBRATION_PIXELS/2), int(self.camera_view_height/2)), (int(self.camera_view_width/2+CALIBRATION_PIXELS/2), int(self.camera_view_height/2)), (255, 255, 0), 5)
-#                 ground_level = self.camera_view_height * self.ground_screen_ratio
-#                 cv2.line(self.resized_image, (int(0), int(ground_level)), (int(self.camera_view_width), int(ground_level)), (255, 255, 255), 5)
+            if self.is_distance_calibration_shown:
+                # Draw middle distance calibration line
+                cv2.line(self.resized_image, (int(self.camera_view_size.width/2-CALIBRATION_PIXELS/2), int(self.camera_view_size.height/2)), (int(self.camera_view_size.width/2+CALIBRATION_PIXELS/2), int(self.camera_view_size.height/2)), RGB_COLOR_YELLOW, 5)
+                # Draw ground level line
+                ground_level = self.camera_view_size.height * self.settings.ground_ratio_calibration_actual_value
+                cv2.line(self.resized_image, (int(0), int(ground_level)), (int(self.camera_view_size.width), int(ground_level)), RGB_COLOR_WHITE, 5)
 
             # If camera_state is not pause, copy the image to be used later
             if self.camera_state != CAMERA_STATE.PAUSE:
@@ -667,23 +706,23 @@ class PoseDetectionModule:
             imgtk = ImageTk.PhotoImage(image=pilImg)
             self.camera_view.imgtk = imgtk
             self.camera_view.configure(image=imgtk)
-            self.camera_view.after(int(1000 / SET_CAMERA_FPS), self.cameraInput)
+            self.camera_view.after(int(1000 / SET_CAMERA_FPS), self.camera_input)
 
 
     def stop_camera_input(self):
         try:
+            self.cap.release()
             if DEBUG_MODE:
                 print("Stop Camera")
-            self.cap.release()
         except:
             print("ERROR: Cannot Stop Camera")
 
 
 
-#     # Debug Methods
+    # Debug Methods
 
-#     def simulate_body_point(self, point=None):
-#         if point:
-#             self.debug_body_point = point
-#         else:
-#             self.debug_body_point = None
+    def simulate_body_point(self, point=None):
+        if point:
+            self.debug_body_point = point
+        else:
+            self.debug_body_point = None

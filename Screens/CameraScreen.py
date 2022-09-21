@@ -1,23 +1,20 @@
-import i18n
 import ctypes
-# import tkinter.messagebox
-# from typing import List
+import i18n
 from tkinter import *
-from Models.Camera.Resolution import Resolution
+from tkinter.simpledialog import askstring
+
+from Models.Enums.CameraMode import CAMERA_MODE
 from Models.Enums.CameraOrientation import CAMERA_ORIENTATION
 from Models.Enums.CameraState import CAMERA_STATE
-from Models.Point import Point
-# from tkinter.simpledialog import askstring
-
-from Models.SavedData import SavedData, SavedPath, SavedPoint
+from Models.Enums.GameMode import GAME_MODE
 from Models.Enums.Screen import SCREEN
-from Models.Enums.CameraMode import CAMERA_MODE
-# from Models.Enums.CameraState import CAMERA_STATE
-# from Models.Enums.GameMode import GAME_MODE
-# from Widgets.ControlBarButton import ControlBarButton
-# # from Models.Timer import Timer
-from Modules.SaveLoadModule import SaveLoadModule
+from Models.Path.Path import Path
+from Models.Path.Point import Point
+from Models.Resolution import Resolution
+from Models.SavedData.SavedRow import SavedRow
+from Models.TransitionData import TransitionData
 from Modules.PoseDetectionModule import PoseDetectionModule
+from Modules.SaveLoadModule import SaveLoadModule
 from Utilities.Constants import *
 from Widgets.ControlBarButton import ControlBarButton
 
@@ -28,18 +25,12 @@ class CameraScreen(Frame):
         
         self.view_size = view_size
 
-        self.navigate_without_stop_camera = navigate
+        self.navigate_after_stop_camera = navigate
         self.change_title = change_title
         self.change_buttons = change_buttons
 
         self.background_view = Label(self, bg='black')
         self.camera_view = Label(self)
-
-#         if DEBUG_MODE:
-#             self.camera_view.bind("<B1-Motion>", self.screen_moved)
-
-        self.camera_view.bind("<ButtonRelease-1>", self.screen_pressed_left)
-#         self.camera_view.bind("<ButtonRelease-3>", self.screen_pressed_right)
 
         self.distance_angle_label = Label(self, font=(FONT_FAMILY, TITLE_FONT_SIZE), bg=THEME_COLOR)
         self.status_label = Label(self, font=(FONT_FAMILY, TITLE_FONT_SIZE), bg=THEME_COLOR)
@@ -50,31 +41,63 @@ class CameraScreen(Frame):
 
         self.gui_set()
 
-#         # self.point_sequence = 0
-#         # self.alphabet = ''
+        self.camera_view.bind("<ButtonRelease-1>", self.screen_pressed_left)
+        self.camera_view.bind("<ButtonRelease-3>", self.screen_pressed_right)
+        if DEBUG_MODE:
+            self.camera_view.bind("<B1-Motion>", self.screen_moved)
+
+        self.save_load_module = SaveLoadModule()
+        self.pose_detection_module = PoseDetectionModule()
+        
+        self.settings_current_point_order = 0
 
 #         # self.countdown = None
 #         # self.timer = None
-        self.save_load_module = SaveLoadModule()
-        self.pose_detection_module = PoseDetectionModule()
 
 
-#     # Navigation Methods
+    # Navigation Methods
 
-    def launch(self, camera_mode=CAMERA_MODE.NORMAL, path:SavedPath=None, points:list[SavedPoint]=[]):
+    def launch(self, camera_mode:CAMERA_MODE, path:Path=None, transition_data:TransitionData=None):
+        """
+        Parameters
+        ----------
+        camera_mode : CAMERA_MODE
+            current camera mode (GAME / SETTINGS)
+        path : SavedPath (Used in GAME / SETTINGS mode)
+            current path information
+        points : list[SavedPoint] (Used in GAME / SETTINGS mode)
+            a list of points for this path
+        transition_data : SettingsAndPathData (Used in SETTINGS mode)
+            a class instance used to transfer data between SettingsScreen, PathsScreen & CameraScreen in Settings
+        """
+
         i18n.set('locale', self.save_load_module.load_locale())
         self.change_title(i18n.t('t.camera'))
         self.camera_mode = camera_mode
-        settings = self.save_load_module.load_settings()
-        camera_number = settings.camera_number
+
+        if self.camera_mode == CAMERA_MODE.NORMAL:
+            self.settings = self.save_load_module.load_settings()
+
+        elif self.camera_mode == CAMERA_MODE.GAME:
+            self.settings = self.save_load_module.load_settings()
+            self.path = path
+            self.points = path.points
+
+        elif self.camera_mode == CAMERA_MODE.SETTINGS:
+            self.transition_data = transition_data
+            self.settings = self.transition_data.settings
+            self.path = path
+            self.points = path.points
+
+        camera_number = self.settings.camera_number
 
         # Test camera with camera number stored in settings
         camera_resolution = self.pose_detection_module.get_camera_resolution(camera_number)
         if camera_resolution is None:
             # Update camera number == 0
             camera_number = 0
-            settings.update(camera_number=camera_number)
-            self.save_load_module.save_settings(settings)
+            self.settings.update(camera_number=camera_number)
+            self.save_load_module.save_settings(self.settings)
             # Test camera with camera number == 0
             camera_resolution = self.pose_detection_module.get_camera_resolution(camera_number)
             if camera_resolution is None:
@@ -83,43 +106,29 @@ class CameraScreen(Frame):
                 self.navigate(SCREEN.HOME)
                 return
 
-        if settings.camera_orientation_mode == CAMERA_ORIENTATION.LEFT or settings.camera_orientation_mode == CAMERA_ORIENTATION.RIGHT:
+        if self.settings.camera_orientation_mode == CAMERA_ORIENTATION.LEFT or self.settings.camera_orientation_mode == CAMERA_ORIENTATION.RIGHT:
             camera_resolution.exchange_width_height()
 
         camera_view_size = self.gui_camera_view_set(camera_resolution=camera_resolution)
-        self.pose_detection_module.set_camera_input(self.camera_view, camera_view_size=camera_view_size, camera_number=camera_number, camera_resolution=camera_resolution, settings=settings)
-        self.pose_detection_module.cameraInput()
+        self.pose_detection_module.set_camera_input(self.camera_view, camera_view_size=camera_view_size, camera_number=camera_number, camera_resolution=camera_resolution, settings=self.settings)
+        self.pose_detection_module.camera_input()
 
         self.gui_buttons_set()
         self.change_camera_state(CAMERA_STATE.PLAYING)
 
+        if self.camera_mode == CAMERA_MODE.GAME or self.camera_mode == CAMERA_MODE.SETTINGS:            
+            path_name = self.path.name
+            self.change_title(path_name)
 
-#         self.game_mode = game_mode
-#         self.path_id = path_id
-#         self.path_name = path_name
-#         self.path_data: List[SavedData] = saved_file
-#         self.path_images = path_images
+            self.good_points_is_shown = True
+            self.bad_points_is_shown = True
 
-#         if self.camera_mode == CAMERA_MODE.GAME or self.camera_mode == CAMERA_MODE.SETTINGS:
-#             points_copy = []
-#             for point in path_points:
-#                 points_copy.append((point[0], point[1], point[2], point[3], point[4]))
-            
-#             self.path_name = str(path_name)
-#             self.change_title(self.path_name)
-
-#             if self.camera_mode == CAMERA_MODE.GAME:
-#                 self.good_points_is_shown = True
-#                 if self.game_mode == GAME_MODE.OBSTACLE:
-#                     self.bad_points_is_shown = True
-#                 else:
-#                     self.bad_points_is_shown = False
-#                 self.pose_detection.game_start(path_id, points_copy, self.game_mode, progress_callback=self.progress_update)
+            # self.pose_detection_module.game_start(path_id, points_copy, self.path.game_mode, progress_callback=self.progress_update)
 #                 self.pose_detection.game_toggle_show_good_points(is_shown=self.good_points_is_shown)
 #                 self.pose_detection.game_toggle_show_bad_points(is_shown=self.bad_points_is_shown)
 
-#             if self.camera_mode == CAMERA_MODE.SETTINGS:
-#                 self.pose_detection.settings_start(path_id, points_copy, gamemode=self.game_mode)
+            if self.camera_mode == CAMERA_MODE.SETTINGS:
+                self.pose_detection_module.settings_start(path=self.path)
 
 #         self.clear_labels()
 
@@ -131,7 +140,7 @@ class CameraScreen(Frame):
         #     self.countdown.reset()
         # if self.timer is not None:
         #     self.timer.reset()
-        self.navigate_without_stop_camera(view, **kwargs)
+        self.navigate_after_stop_camera(view, **kwargs)
 
 
     # Camera Methods
@@ -175,22 +184,6 @@ class CameraScreen(Frame):
         self.distance_angle_label.place_forget()
 
 
-#     def change_game_mode_btn_pressed(self):
-#         self.clear_all_touch_points_btn_pressed()
-#         self.clear_all_avoid_points_btn_pressed()
-#         self.pose_detection.game_change_game_mode(self.game_mode)
-#         self.alphabet = ''
-#         if self.game_mode == GAME_MODE.OBSTACLE:
-#             self.change_title(self.path_name)
-#             self.game_mode = GAME_MODE.SEQUENCE
-#         elif self.game_mode == GAME_MODE.SEQUENCE:
-#             self.change_title(self.path_name + ' (' + i18n.t('t.game_mode_2') + ') ')
-#             self.game_mode = GAME_MODE.ALPHABET
-#         elif self.game_mode == GAME_MODE.ALPHABET:
-#             self.change_title(self.path_name + ' (' + i18n.t('t.game_mode_0') + ') ')
-#             self.game_mode = GAME_MODE.OBSTACLE
-
-
 #     # Timer Methods
 
 #     def countdown_update(self, time):
@@ -212,15 +205,15 @@ class CameraScreen(Frame):
 #     # Finish Game Mode
 
 #     def progress_update(self, touched, all):
-#         if self.game_mode == GAME_MODE.OBSTACLE or self.game_mode == GAME_MODE.SEQUENCE:
+#         if self.path.game_mode == GAME_MODE.OBSTACLE or self.path.game_mode == GAME_MODE.SEQUENCE:
 #             self.progress_label.config(text=f"{touched}/{all}")
 #             if touched == all:
 #                 self.finish_btn_pressed()
-#         elif self.game_mode == GAME_MODE.ALPHABET:
+#         elif self.path.game_mode == GAME_MODE.ALPHABET:
 #             self.progress_label.config(text=f"{touched}")
 
 
-#     # Button Actions
+    # Button Actions
 
     def clear_btn_pressed(self):
         self.pose_detection_module.clear_all_dots()
@@ -228,9 +221,9 @@ class CameraScreen(Frame):
 
 
     def screen_pressed_left(self, event):
-        point = Point(x=event.x, y=event.y)
-        if self.camera_mode == CAMERA_MODE.NORMAL or self.camera_mode == CAMERA_MODE.GAME:
+        if self.camera_mode == CAMERA_MODE.NORMAL:
             if self.camera_state == CAMERA_STATE.PAUSE:
+                point = Point(x=event.x, y=event.y)
                 calculationResult = self.pose_detection_module.tap_on_screen(point)
                 if calculationResult.distance:
                     self.distance_angle_label.config(text=i18n.t('t.distance')+": {:.2f} m".format(calculationResult.distance))
@@ -240,23 +233,30 @@ class CameraScreen(Frame):
                     self.distance_angle_label.place(relx=0.5, y=15, anchor=N)
                 else:
                     self.distance_angle_label.place_forget()
-#         elif self.camera_mode == CAMERA_MODE.SETTINGS:
-#             if self.game_mode == GAME_MODE.ALPHABET:
-#                 self.alphabet = askstring('Alphabet', 'Please input alphabet')
-#             else:
-#                 self.alphabet = ''
-#             self.pose_detection.settings_game_screen_pressed(point=(event.x, event.y), is_good=True, point_squence=self.point_sequence, alphabet=self.alphabet, gamemode=self.game_mode)
-#             if self.game_mode == GAME_MODE.SEQUENCE or self.game_mode == GAME_MODE.ALPHABET:
-#                 self.point_sequence += 1
-#             else:
-#                 self.point_sequence = 0
-#         if DEBUG_MODE:
-#             self.pose_detection.simulate_body_point()
+
+        elif self.camera_mode == CAMERA_MODE.SETTINGS:
+            if self.path.game_mode == GAME_MODE.OBSTACLE:
+                good_point = Point(x=event.x, y=event.y, is_good=True)
+                self.pose_detection_module.settings_screen_pressed(point=good_point)
+
+            elif self.path.game_mode == GAME_MODE.SEQUENCE:
+                point = Point(x=event.x, y=event.y, order=self.settings_current_point_order)
+                self.pose_detection_module.settings_screen_pressed(point=point)
+                self.settings_current_point_order += 1
+
+            elif self.path.game_mode == GAME_MODE.ALPHABET:
+                alphabet = askstring(i18n.t('t.alphabet'), i18n.t('t.input_alphabet'))
+                point = Point(x=event.x, y=event.y, alphabet=alphabet)
+                self.pose_detection_module.settings_screen_pressed(point=point)
+
+        if DEBUG_MODE:
+            self.pose_detection_module.simulate_body_point()
 
 
-#     def screen_pressed_right(self, event):
-#         if self.camera_mode == CAMERA_MODE.SETTINGS and self.game_mode == GAME_MODE.OBSTACLE:
-#             self.pose_detection.settings_game_screen_pressed(point=(event.x, event.y), is_good=False, point_squence=0, alphabet=self.alphabet, gamemode=self.game_mode)
+    def screen_pressed_right(self, event):
+        if self.camera_mode == CAMERA_MODE.SETTINGS and self.path.game_mode == GAME_MODE.OBSTACLE:
+            bad_point = Point(x=event.x, y=event.y, is_good=False)
+            self.pose_detection_module.settings_screen_pressed(point=bad_point)
 
 
 #     # Button Actions (Game)
@@ -265,7 +265,7 @@ class CameraScreen(Frame):
 #         result = self.pose_detection.game_finish()
 #         result.update_time(self.timer_label['text'])
 #         self.pose_detection.stop_camera_input()
-#         self.navigate(VIEW.RESULT, result=result, gamemode=self.game_mode)
+#         self.navigate(VIEW.RESULT, result=result, gamemode=self.path.game_mode)
 
 
 #     def return_btn_pressed(self):
@@ -297,47 +297,85 @@ class CameraScreen(Frame):
 #         self.change_buttons(self.buttons)
 
 
-#     # Button Actions (Settings)
+    # Button Actions (Settings)
 
-#     def undo_btn_pressed(self):
-#         self.pose_detection.settings_path_undo()
-
-
-#     def redo_btn_pressed(self):
-#         self.pose_detection.settings_path_redo()
-
-
-#     def clear_all_points_btn_pressed(self):
-#         self.point_sequence = 0
-#         self.pose_detection.settings_path_clear_all_points()
-
-
-#     def cancel_btn_pressed(self):
-#         self.navigate(VIEW.PATHS, is_settings=True, path_data=self.path_data)
+    def settings_change_game_mode_btn_pressed(self):
+        if self.path.game_mode == GAME_MODE.OBSTACLE:
+            self.path.game_mode = GAME_MODE.SEQUENCE
+            self.change_title(self.path.name + ' (' + i18n.t('t.game_mode_sequence') + ') ')
+        elif self.path.game_mode == GAME_MODE.SEQUENCE:
+            self.path.game_mode = GAME_MODE.ALPHABET
+            self.change_title(self.path.name + ' (' + i18n.t('t.game_mode_alphabet') + ') ')
+        elif self.path.game_mode == GAME_MODE.ALPHABET:
+            self.path.game_mode = GAME_MODE.OBSTACLE
+            self.change_title(self.path.name + ' (' + i18n.t('t.game_mode_obstacle') + ') ')
+        # Clear all points when change game mode
+        self.path.update_points(points=[])
+        self.pose_detection_module.settings_start(path=self.path)
 
 
-#     def confirm_btn_pressed(self):
-#         have_good_points = False
-#         new_points, new_image = self.pose_detection.settings_path_done()
-#         # Check if there is any good points
-#         for point in new_points:
-#             if point.is_good:
-#                 have_good_points = True
-#         if have_good_points:
-#             new_path_data: List[SavedData] = self.path_data.copy()
-#             # Remove all points of this path
-#             for row in self.path_data:
-#                 if row.path_id == self.path_id:
-#                     new_path_data.remove(row)
-            
-#             self.path_images.append((self.path_id, new_image))
-#             for point in new_points:
-#                 new_row = SavedData(path_id=self.path_id, path_name=self.path_name, path_gamemode=self.game_mode, point_x=)
-#                 new_path_data.append([self.path_id, self.path_name, point[0], point[1], point[2], point[3], point[4], self.game_mode.value])
-#             self.navigate(VIEW.PATHS, is_settings=True, path_data=new_path_data, path_images=self.path_images)
-#         else:
-#             # If no good point, show error message
-#             tkinter.messagebox.showerror(title=i18n.t('t.error'), message=i18n.t('t.error_path'))
+    def settings_undo_btn_pressed(self):
+        self.pose_detection_module.settings_undo()
+
+
+    def settings_redo_btn_pressed(self):
+        self.pose_detection_module.settings_redo()
+
+
+    def settings_clear_all_points_btn_pressed(self):
+        self.pose_detection_module.settings_clear_all_points()
+        self.settings_current_point_order = 0
+
+
+    def settings_cancel_btn_pressed(self):
+        self.navigate(SCREEN.PATHS, camera_mode=CAMERA_MODE.SETTINGS, transition_data=self.transition_data)
+
+
+    def settings_confirm_btn_pressed(self):
+        self.path, new_path_image = self.pose_detection_module.settings_done()
+
+        if not self.settings_confirm_validation(path=self.path):
+            return
+
+        new_saved_rows: list[SavedRow] = self.transition_data.saved_rows.copy()
+
+        # Remove all points of this path
+        for row in self.transition_data.saved_rows:
+            if row.path_id == self.path.id:
+                new_saved_rows.remove(row)
+        # Add new points for this path
+        new_saved_rows += self.path.to_saved_rows
+
+        new_updated_path_images = self.transition_data.updated_path_images.copy().append(new_path_image)
+        new_transition_data = TransitionData(settings=self.settings, saved_rows=new_saved_rows, renamed_paths=self.transition_data.renamed_paths, updated_path_images=new_updated_path_images)
+
+        self.navigate(SCREEN.PATHS, camera_mode=CAMERA_MODE.SETTINGS, transition_data=new_transition_data)
+
+
+    def settings_confirm_validation(self, path: Path) -> bool:
+        """
+        Test if this path is valid to be saved.
+        Return true if valid, false otherwise.
+        """
+        if path.game_mode == GAME_MODE.OBSTACLE:
+            if len(path.good_points) == 0:
+                # If there is no good point, show error message
+                ctypes.windll.user32.MessageBoxW(0, i18n.t('t.error_path'), i18n.t('t.error'), 0)
+                return False
+
+        elif path.game_mode == GAME_MODE.SEQUENCE:
+            if len(path.points) == 0:
+                # If there is no point, show error message
+                ctypes.windll.user32.MessageBoxW(0, i18n.t('t.error_path'), i18n.t('t.error'), 0)
+                return False
+
+        elif path.game_mode == GAME_MODE.ALPHABET:
+            if len(path.points) == 0:
+                # If there is no point, show error message
+                ctypes.windll.user32.MessageBoxW(0, i18n.t('t.error_path'), i18n.t('t.error'), 0)
+                return False
+
+        return True
 
 
 #     # Other Methods
@@ -369,8 +407,8 @@ class CameraScreen(Frame):
             # The height of background_view is larger than the height of camera_view
             camera_view_width = self.view_size.width
             camera_view_height = int(self.view_size.width / camera_view_ratio)
-        camera_view_size = Resolution(width=camera_view_width, height=camera_view_height)
         self.camera_view.place(relx=0.5, rely=0.5, width=camera_view_width, height=camera_view_height, anchor=CENTER)
+        camera_view_size = Resolution(width=camera_view_width, height=camera_view_height)
         return camera_view_size
 
 
@@ -399,20 +437,20 @@ class CameraScreen(Frame):
 #             # projector_view.pose_detection.cameraInput()
 
 
-#         elif self.camera_mode == CAMERA_MODE.SETTINGS:
-#             self.buttons = {
-#                 0: ControlBarButton(i18n.t('t.change_game_mode'), self.change_game_mode_btn_pressed),
-#                 2: ControlBarButton(i18n.t('t.undo'), self.undo_btn_pressed),
-#                 3: ControlBarButton(i18n.t('t.redo'), self.redo_btn_pressed),
-#                 4: ControlBarButton(i18n.t('t.clear_all_points'), self.clear_all_points_btn_pressed),
-#                 8: ControlBarButton(i18n.t('t.cancel'), self.cancel_btn_pressed, THEME_COLOR_PINK),
-#                 9: ControlBarButton(i18n.t('t.confirm'), self.confirm_btn_pressed, THEME_COLOR_PURPLE)
-#             }
-#             self.reminder_label.config(text=f"""{i18n.t('t.press_left_mouse_button_for_new_touch_point')}
-# {i18n.t('t.press_right_mouse_button_for_new_avoid_point')}""")
-#             self.reminder_label.place(relx=0.5, rely=1.0, y=-10, width=600, anchor=S)
-#             self.point_sequence = 0
-#             self.alphabet = ''
+        elif self.camera_mode == CAMERA_MODE.SETTINGS:
+            self.buttons = {
+                0: ControlBarButton(i18n.t('t.change_game_mode'), self.settings_change_game_mode_btn_pressed),
+                2: ControlBarButton(i18n.t('t.undo'), self.settings_undo_btn_pressed),
+                3: ControlBarButton(i18n.t('t.redo'), self.settings_redo_btn_pressed),
+                4: ControlBarButton(i18n.t('t.clear_all_points'), self.settings_clear_all_points_btn_pressed),
+                8: ControlBarButton(i18n.t('t.cancel'), self.settings_cancel_btn_pressed, THEME_COLOR_PINK),
+                9: ControlBarButton(i18n.t('t.confirm'), self.settings_confirm_btn_pressed, THEME_COLOR_PURPLE)
+            }
+            self.reminder_label.config(text=f"""{i18n.t('t.press_left_mouse_button_for_new_touch_point')}
+{i18n.t('t.press_right_mouse_button_for_new_avoid_point')}""")
+            self.reminder_label.place(relx=0.5, rely=1.0, y=-10, width=600, anchor=S)
+            self.point_sequence = 0
+            self.alphabet = ''
 
         else:
             self.buttons = {
@@ -429,7 +467,7 @@ class CameraScreen(Frame):
         self.background_view.place(relwidth=1.0, relheight=1.0)
 
 
-#     # Debug Methods
+    # Debug Methods
 
-#     def screen_moved(self, event):
-#         self.pose_detection.simulate_body_point((event.x, event.y))
+    def screen_moved(self, event):
+        self.pose_detection.simulate_body_point((event.x, event.y))
