@@ -9,8 +9,8 @@ class SavedRow:
     path_id : str
     path_name : str
     path_game_mode : GAME_MODE
-    point_x : int
-    point_y : int
+    point_x : flaot (0.0-1.0)
+    point_y : float (0.0-1.0)
     point_is_good : bool (Used in OBSTACLE Game Mode)
         is_good==True are the points player needs to touch. is_good==False are the points player needs to avoid.
     point_order: int (Used in SEQUENCE Game Mode)
@@ -19,7 +19,7 @@ class SavedRow:
         the alphabet this point represents.
     """
     
-    def __init__(self, path_id: str, path_name: str, path_game_mode: GAME_MODE, point_x: int, point_y: int, point_is_good:bool, point_order:int, point_alphabet:str):
+    def __init__(self, path_id: str, path_name: str, path_game_mode: GAME_MODE, point_x: float, point_y: float, point_is_good:bool, point_order:int, point_alphabet:str):
         self.path_id = path_id
         self.path_name = path_name
         self.path_game_mode = path_game_mode

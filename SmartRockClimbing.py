@@ -43,8 +43,7 @@ class SmartRockClimbing:
         self.is_keypad_reverse = SaveLoadModule().load_settings().is_keypad_reverse
 
         if DEBUG_MODE:
-            self.navigate(SCREEN.PATHS, camera_mode=CAMERA_MODE.GAME)
-            # self.navigate(SCREEN.HOME)
+            self.navigate(SCREEN.HOME)
         else:
             self.navigate(SCREEN.HOME)
 

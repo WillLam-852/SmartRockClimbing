@@ -169,18 +169,18 @@ class PathsScreen(Frame):
         if len(self.path_listbox.curselection()) != 0:
             path_name: str = self.path_listbox.get(self.path_listbox.curselection()[0]).split(" (")[0]
             path_id: str = None
-            path_gamemode: GAME_MODE = None
+            path_game_mode: GAME_MODE = None
             points: list[Point] = []
             for row in self.saved_rows:
                 if path_name == row.path_name:
-                    path_id = row.path_name
-                    path_gamemode = row.path_game_mode
+                    path_id = row.path_id
+                    path_game_mode = row.path_game_mode
                     points.append(Point(x=row.point_x, y=row.point_y, is_good=row.point_is_good, order=row.point_order, alphabet=row.point_alphabet))
-            if path_id and path_gamemode:
+            if path_id and path_game_mode:
                 return Path(
                     id=path_id,
                     name=path_name,
-                    game_mode=path_gamemode,
+                    game_mode=path_game_mode,
                     points=points
                 )
         return None

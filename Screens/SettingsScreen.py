@@ -271,7 +271,7 @@ class SettingsScreen(Frame):
     def gui_update(self):
         self.gui_clear()
 
-        self.pose_detection_module.update_settings(self.settings_transition_data.settings, is_distance_calibration_shown=self.is_distance_calibration_shown)
+        self.pose_detection_module.settings_update_settings(self.settings_transition_data.settings, is_distance_calibration_shown=self.is_distance_calibration_shown)
 
         if not self.is_camera_detected:
 
@@ -302,17 +302,10 @@ class SettingsScreen(Frame):
 
                 self.sensitivity_label.config(text=i18n.t('t.sensitivity'))
                 self.sensitivity_label.place(relx=0.5, height=CONTROL_BAR_BUTTON_HEIGHT, anchor=N)
-                if self.settings_transition_data.settings.sensitivity_level == SENSITIVITY_LEVEL.VERY_LOW:
-                    self.buttons[0] = ControlBarButton(i18n.t('t.very_low'), self.sensitivity_btn_pressed)
-                elif self.settings_transition_data.settings.sensitivity_level == SENSITIVITY_LEVEL.LOW:
-                    self.buttons[0] = ControlBarButton(i18n.t('t.low'), self.sensitivity_btn_pressed)
-                elif self.settings_transition_data.settings.sensitivity_level == SENSITIVITY_LEVEL.MEDIUM:
-                    self.buttons[0] = ControlBarButton(i18n.t('t.medium'), self.sensitivity_btn_pressed)
-                elif self.settings_transition_data.settings.sensitivity_level == SENSITIVITY_LEVEL.HIGH:
-                    self.buttons[0] = ControlBarButton(i18n.t('t.high'), self.sensitivity_btn_pressed)
-                elif self.settings_transition_data.settings.sensitivity_level == SENSITIVITY_LEVEL.VERY_HIGH:
-                    self.buttons[0] = ControlBarButton(i18n.t('t.very_high'), self.sensitivity_btn_pressed)
-
+                
+                sensitivity_level_str = i18n.t(f't.{str(self.settings_transition_data.settings.sensitivity_level.value)}')
+                self.buttons[0] = ControlBarButton(sensitivity_level_str, self.sensitivity_btn_pressed)
+                
                 self.danger_alert_label.config(text=f"{i18n.t('t.danger_alert')}")
                 self.danger_alert_label.place(relx=0.5, y=CONTROL_BAR_BUTTON_HEIGHT, height=CONTROL_BAR_BUTTON_HEIGHT, anchor=N)
                 if self.settings_transition_data.settings.is_danger_alert_on:

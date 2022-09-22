@@ -79,10 +79,12 @@ POINT_FONTSCALE = 1
 POINT_TEXT_COLOR = RGB_COLOR_BLUE
 POINT_TEXT_THICKNESS = 3
 
+GAME_TEST_FRAMES_NUMBER = 5
+
 # Recording
 RECORDING_FPS = 10
 
-# # Video Player
+# Video Player
 # SLEEP_DELTA = 1.0
 
 # Settings
@@ -102,7 +104,7 @@ LOCALE = "locale"
 # Map Variables Name
 PATH_ID = "path_id"
 PATH_NAME = "path_name"
-PATH_GAMEMODE = "path_gamemode"
+PATH_GAME_MODE = "path_game_mode"
 POINT_X = "point_x"
 POINT_Y = "point_y"
 POINT_IS_GOOD = "point_is_good"

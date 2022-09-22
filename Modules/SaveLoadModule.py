@@ -1,3 +1,4 @@
+import csv
 import cv2
 import os
 import pickle
@@ -12,12 +13,12 @@ from Utilities.Constants import *
 from Utilities.OpenFile import open_file
 
 class SaveLoadModule:
-    csv_column_names = [PATH_ID, PATH_NAME, PATH_GAMEMODE, POINT_X, POINT_Y, POINT_IS_GOOD, POINT_ORDER, POINT_ALPHABET]
+    csv_column_names = [PATH_ID, PATH_NAME, PATH_GAME_MODE, POINT_X, POINT_Y, POINT_IS_GOOD, POINT_ORDER, POINT_ALPHABET]
     
     def __init__(self):
         self.settings = Settings()
         self.locale = 'ch'
-        self.path_data: List[SavedRow] = []
+        self.saved_rows: List[SavedRow] = []
 
 
     def load_settings(self) -> Settings:
@@ -59,32 +60,37 @@ class SaveLoadModule:
     def load_path_data(self) -> List[SavedRow]:
         try:
             df = pd.read_csv( open_file(PATH_FILE_LOCATION), usecols=self.csv_column_names, keep_default_na=False).sort_values(by=['path_id'])
+            df_dict = df.to_dict()
+            df_list = df.values.tolist()
             savedRows: List[SavedRow] = []
-            for row in df.values.tolist():
+            for i in range(len(df_list)):
                 savedData = SavedRow(
-                    path_id=row[PATH_ID], 
-                    path_name=row[PATH_NAME], 
-                    path_game_mode=GAME_MODE(row[PATH_GAMEMODE]), 
-                    point_x=int(row[POINT_X]),
-                    point_y=int(row[POINT_Y]),
-                    point_is_good=row[POINT_IS_GOOD],
-                    point_order=int(row[POINT_ORDER]),
-                    point_alphabet=row[POINT_ALPHABET]
+                    path_id=df_dict[PATH_ID][i], 
+                    path_name=df_dict[PATH_NAME][i], 
+                    path_game_mode=GAME_MODE(df_dict[PATH_GAME_MODE][i]), 
+                    point_x=float(df_dict[POINT_X][i]),
+                    point_y=float(df_dict[POINT_Y][i]),
+                    point_is_good=df_dict[POINT_IS_GOOD][i],
+                    point_order=int(df_dict[POINT_ORDER][i]),
+                    point_alphabet=df_dict[POINT_ALPHABET][i]
                 )
                 savedRows.append(savedData)
-            self.path_data = savedRows
+            self.saved_rows = savedRows
         except:
-            self.save_path_data(self.path_data)
-        return self.path_data
+            settings_transition_data = SettingsTransitionData(settings=self.settings, saved_rows=self.saved_rows, renamed_paths=[], updated_path_images=[])
+            self.save_path_data(settings_transition_data=settings_transition_data)
+        return self.saved_rows
 
 
     def save_path_data(self, settings_transition_data: SettingsTransitionData):
         # Save path data
         if len(settings_transition_data.saved_rows) > 0:
+            saved_path_data = []
             for row in settings_transition_data.saved_rows:
                 saved_row = [row.path_id, row.path_name, row.path_game_mode.value, row.point_x, row.point_y, row.point_is_good, row.point_order, row.point_alphabet]
-                df = pd.DataFrame([saved_row], columns=self.csv_column_names)
-                df.to_csv( open_file(PATH_FILE_LOCATION) )
+                saved_path_data.append(saved_row)
+            df = pd.DataFrame(saved_path_data, columns=self.csv_column_names)
+            df.to_csv( open_file(PATH_FILE_LOCATION) )
         else:
             df = pd.DataFrame([['','','','','','','','']], columns=self.csv_column_names)
             df = df[df.path_id != '']
@@ -96,7 +102,7 @@ class SaveLoadModule:
         
         # Delete old files
         old_path_ids = []
-        for row in self.path_data:
+        for row in self.saved_rows:
             old_path_ids.append(row.path_id)
         old_path_ids = list(set(old_path_ids))
         
@@ -119,4 +125,4 @@ class SaveLoadModule:
             if os.path.exists(old_file_name):
                 os.rename(old_file_name, new_file_name)
 
-        self.path_data = settings_transition_data.saved_rows
+        self.saved_rows = settings_transition_data.saved_rows
