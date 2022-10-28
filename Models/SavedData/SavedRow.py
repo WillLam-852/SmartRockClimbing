@@ -7,6 +7,7 @@ class SavedRow:
     Attributes
     ----------
     path_id : str
+    path_created_timestamp : float
     path_name : str
     path_game_mode : GAME_MODE
     point_x : flaot (0.0-1.0)
@@ -19,8 +20,9 @@ class SavedRow:
         the alphabet this point represents.
     """
     
-    def __init__(self, path_id: str, path_name: str, path_game_mode: GAME_MODE, point_x: float, point_y: float, point_is_good:bool, point_order:int, point_alphabet:str):
+    def __init__(self, path_id: str, path_created_timestamp: float, path_name: str, path_game_mode: GAME_MODE, point_x: float, point_y: float, point_is_good:bool, point_order:int, point_alphabet:str):
         self.path_id = path_id
+        self.path_created_timestamp = path_created_timestamp
         self.path_name = path_name
         self.path_game_mode = path_game_mode
         self.point_x = point_x

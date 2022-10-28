@@ -1,3 +1,4 @@
+from __future__ import annotations
 from tkinter import *
 from Utilities.Constants import *
 from Widgets.ControlBarButton import ControlBarButton

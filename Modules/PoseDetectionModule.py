@@ -1,24 +1,27 @@
+from __future__ import annotations
 import copy
 import csv
 import cv2
 import datetime
 import mediapipe as mp
 import time
-# from typing import Any
 from PIL import Image, ImageTk
 from tkinter import Label
 
+from Models.Calculation.CalculationResult import CalculationResult
 from Models.Enums.CameraMode import CAMERA_MODE
 from Models.Enums.CameraOrientation import CAMERA_ORIENTATION
 from Models.Enums.CameraState import CAMERA_STATE
-from Models.Calculation.CalculationResult import CalculationResult
 from Models.Enums.GameMode import GAME_MODE
+from Models.Path.GamePath import GamePath
 from Models.Path.Path import Path
 from Models.Path.PathImage import PathImage
 from Models.Path.Point import Point
 from Models.Resolution import Resolution
 from Models.Settings.Settings import Settings
 from Modules.CalculationModule import CalculationModule
+from Modules.SaveLoadModule import SaveLoadModule
+from Modules.SoundModule import SoundModule
 from Utilities.Constants import *
 from Utilities.OpenFile import open_file
 
@@ -69,7 +72,7 @@ class PoseDetectionModule:
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, camera_resolution.height)
         self.camera_resolution = camera_resolution
         self.update_camera_view(camera_view=camera_view, size=camera_view_size)
-        # self.sound_module = SoundModule()
+        self.sound_module = SoundModule()
         self.pose = mp_pose.Pose(
             min_detection_confidence=0.5,   
             min_tracking_confidence=0.5
@@ -77,7 +80,6 @@ class PoseDetectionModule:
         self.camera_state = CAMERA_STATE.PLAYING
         self.camera_mode = CAMERA_MODE.NORMAL
         self.settings = settings
-        self.is_distance_calibration_shown = False
 
 
     def update_camera_view(self, camera_view: Label, size: Resolution):
@@ -198,36 +200,33 @@ class PoseDetectionModule:
         # Resize image to fit camera view size
         self.resized_image = cv2.resize(image.copy(), (self.camera_view_size.width, self.camera_view_size.height))
 
-        # For Debugging, use mouse to simulate body point
         if self.camera_mode == CAMERA_MODE.GAME:
-            self.games_settings_show_game_points()
+            self.game_show_game_points()
+            if self.game_path.path.game_mode == GAME_MODE.ALPHABET:
+                self.game_show_alphabets()
+
+            self.game_calculate_pose(results.pose_landmarks)
+            # self.game_update_progress_label(self.path_in_camera)
+
+            # For Debugging, use mouse to simulate body point
             if DEBUG_MODE and self.debug_game_camera_point:
                 cv2.circle(self.resized_image, (int(self.debug_game_camera_point.x), int(self.debug_game_camera_point.y)), DOT_RADIUS, (0, 0, 255), -1)
-#                         debug_body_universal_point = self.map_to_universal_point(self.debug_body_point)
-#                         self.path.evaluate_body_point(debug_body_universal_point)
-
-#             if self.camera_mode == CAMERA_MODE.GAME:
-#                 # Calculate Pose (Game)
-#                 self.game_calculate_pose(self.path, results.pose_landmarks)
-#                 self.game_update_progress_label(self.path)
-#                 # Show Game Points (Game)
-#                 self.game_show_game_points(self.path, self.gamemode)
-#                 if self.gamemode == GAME_MODE.ALPHABET:
-#                     self.game_show_alphabets(self.path)
+                debug_game_universal_body_point = self.map_to_universal_point(self.debug_game_camera_point)
+                self.game_path.game_evaluate_body_point(universal_body_point=debug_game_universal_body_point)
 
         # Show Game Points (Settings)
         elif self.camera_mode == CAMERA_MODE.SETTINGS:
-            self.games_settings_show_game_points()
+            self.settings_show_game_points()
 
-#             # If Calibration is on,
-#             #   show a yellow horizontal line with CALIBRATION_PIXELS (default: 100)
-#             #   and a white horizontal line for ground level
-        if self.is_distance_calibration_shown:
-            # Draw middle distance calibration line
-            cv2.line(self.resized_image, (int(self.camera_view_size.width/2-CALIBRATION_PIXELS/2), int(self.camera_view_size.height/2)), (int(self.camera_view_size.width/2+CALIBRATION_PIXELS/2), int(self.camera_view_size.height/2)), RGB_COLOR_YELLOW, 5)
-            # Draw ground level line
-            ground_level = self.camera_view_size.height * self.settings.ground_ratio_calibration_actual_value
-            cv2.line(self.resized_image, (int(0), int(ground_level)), (int(self.camera_view_size.width), int(ground_level)), RGB_COLOR_WHITE, 5)
+            # If Calibration is on,
+            #   show a yellow horizontal line with CALIBRATION_PIXELS (default: 100)
+            #   and a white horizontal line for ground level
+            if self.settings_is_distance_calibration_shown:
+                # Draw middle distance calibration line
+                cv2.line(self.resized_image, (int(self.camera_view_size.width/2-CALIBRATION_PIXELS/2), int(self.camera_view_size.height/2)), (int(self.camera_view_size.width/2+CALIBRATION_PIXELS/2), int(self.camera_view_size.height/2)), RGB_COLOR_YELLOW, 5)
+                # Draw ground level line
+                ground_level = self.camera_view_size.height * self.settings.ground_ratio_calibration_actual_value
+                cv2.line(self.resized_image, (int(0), int(ground_level)), (int(self.camera_view_size.width), int(ground_level)), RGB_COLOR_WHITE, 5)
 
         # If camera_state is not pause, copy the image to be used later
         if self.camera_state != CAMERA_STATE.PAUSE:
@@ -450,7 +449,7 @@ class PoseDetectionModule:
 
     def game_start(self, path: Path, progress_callback):
         self.camera_mode = CAMERA_MODE.GAME
-        self.path = path
+        self.game_path = GamePath(path=path)
         self.game_progress_callback = progress_callback
         # self.spelling_point_list = []
         # self.point_index = 0
@@ -461,15 +460,15 @@ class PoseDetectionModule:
         self.game_test_frame_rate()
 
 
-#     def game_calculate_pose(self, path, pose_landmarks):
-#         if path and pose_landmarks:
-#             left_index = self.get_body_point(pose_landmarks.landmark[mp_pose.PoseLandmark.LEFT_INDEX])
-#             right_index = self.get_body_point(pose_landmarks.landmark[mp_pose.PoseLandmark.RIGHT_INDEX])
-#             left_ankle = self.get_body_point(pose_landmarks.landmark[mp_pose.PoseLandmark.LEFT_ANKLE])
-#             right_ankle = self.get_body_point(pose_landmarks.landmark[mp_pose.PoseLandmark.RIGHT_ANKLE])
-#             for body_point in [left_index, right_index, left_ankle, right_ankle]:
-#                 universal_point = self.map_to_universal_point(body_point)
-#                 self.path.evaluate_body_point(universal_point)
+    def game_calculate_pose(self, pose_landmarks):
+        if pose_landmarks:
+            left_index = self.get_body_point(pose_landmarks.landmark[mp_pose.PoseLandmark.LEFT_INDEX])
+            right_index = self.get_body_point(pose_landmarks.landmark[mp_pose.PoseLandmark.RIGHT_INDEX])
+            left_ankle = self.get_body_point(pose_landmarks.landmark[mp_pose.PoseLandmark.LEFT_ANKLE])
+            right_ankle = self.get_body_point(pose_landmarks.landmark[mp_pose.PoseLandmark.RIGHT_ANKLE])
+            for body_point in [left_index, right_index, left_ankle, right_ankle]:
+                universal_body_point = self.map_to_universal_point(body_point)
+                self.game_path.game_evaluate_body_point(universal_body_point=universal_body_point)
 
 
 #     def game_update_progress_label(self, path):
@@ -480,33 +479,53 @@ class PoseDetectionModule:
 #                 self.update_progress_label(len(path.player_input_alphabets), 0)
             
 
-#     def game_show_game_points(self, path, gamemode):
-#         if path:
-#             if self.is_good_points_shown:
-#                 for point in self.path.good_points:
-#                     camera_point = self.map_to_camera_point(point)
-#                     cv2.circle(self.resized_image, camera_point, DOT_RADIUS, GOOD_POINTS_COLOR, -1)
-#                 for point in self.path.touching_good_points:
-#                     camera_point = self.map_to_camera_point(point)
-#                     cv2.circle(self.resized_image, camera_point, DOT_RADIUS, TOUCHING_GOOD_POINTS_COLOR, -1)
-#                 for point in self.path.touched_good_points:
-#                     camera_point = self.map_to_camera_point(point)
-#                     cv2.circle(self.resized_image, camera_point, DOT_RADIUS, TOUCHED_GOOD_POINTS_COLOR, -1)
-#                 for point in self.path.good_points:
-#                     if gamemode == GAME_MODE.SEQUENCE:
-#                         cv2.putText(self.resized_image, str(point[3]+1), camera_point, POINT_FONTFACE, POINT_FONTSCALE, POINT_TEXT_COLOR, POINT_TEXT_THICKNESS)
-#                     elif gamemode == GAME_MODE.ALPHABET:
-#                         cv2.putText(self.resized_image, str(point[4]), camera_point, POINT_FONTFACE, POINT_FONTSCALE, POINT_TEXT_COLOR, POINT_TEXT_THICKNESS)
-#             if gamemode == GAME_MODE.OBSTACLE and self.is_bad_points_shown:
-#                 for point in self.path.bad_points:
-#                     camera_point = self.map_to_camera_point(point)
-#                     cv2.circle(self.resized_image, camera_point, DOT_RADIUS, BAD_POINTS_COLOR, -1)
-#                 for point in self.path.touching_bad_points:
-#                     camera_point = self.map_to_camera_point(point)
-#                     cv2.circle(self.resized_image, camera_point, DOT_RADIUS, TOUCHING_BAD_POINTS_COLOR, -1)
-#                 for point in self.path.touched_bad_points:
-#                     camera_point = self.map_to_camera_point(point)
-#                     cv2.circle(self.resized_image, camera_point, DOT_RADIUS, TOUCHED_BAD_POINTS_COLOR, -1)
+    def game_show_game_points(self):
+        game_mode = self.game_path.path.game_mode
+
+        if game_mode == GAME_MODE.OBSTACLE:
+            for point in self.game_path.untouched_good_points:
+                camera_point = self.map_to_camera_point(point)
+                cv2.circle(self.resized_image, (int(camera_point.x), int(camera_point.y)), DOT_RADIUS, GOOD_POINTS_COLOR, -1)
+            for point in self.game_path.touching_good_points:
+                camera_point = self.map_to_camera_point(point)
+                cv2.circle(self.resized_image, (int(camera_point.x), int(camera_point.y)), DOT_RADIUS, TOUCHING_GOOD_POINTS_COLOR, -1)
+            for point in self.game_path.touched_good_points:
+                camera_point = self.map_to_camera_point(point)
+                cv2.circle(self.resized_image, (int(camera_point.x), int(camera_point.y)), DOT_RADIUS, TOUCHED_GOOD_POINTS_COLOR, -1)
+
+            for point in self.game_path.untouched_bad_points:
+                camera_point = self.map_to_camera_point(point)
+                cv2.circle(self.resized_image, (int(camera_point.x), int(camera_point.y)), DOT_RADIUS, BAD_POINTS_COLOR, -1)
+            for point in self.game_path.touching_bad_points:
+                camera_point = self.map_to_camera_point(point)
+                cv2.circle(self.resized_image, (int(camera_point.x), int(camera_point.y)), DOT_RADIUS, TOUCHING_BAD_POINTS_COLOR, -1)
+            for point in self.game_path.touched_bad_points:
+                camera_point = self.map_to_camera_point(point)
+                cv2.circle(self.resized_image, (int(camera_point.x), int(camera_point.y)), DOT_RADIUS, TOUCHED_BAD_POINTS_COLOR, -1)
+                
+        elif game_mode == GAME_MODE.SEQUENCE:
+            for point in self.game_path.untouched_points:
+                camera_point = self.map_to_camera_point(point)
+                cv2.circle(self.resized_image, (int(camera_point.x), int(camera_point.y)), DOT_RADIUS, GOOD_POINTS_COLOR, -1)
+            for point in self.game_path.touching_points:
+                camera_point = self.map_to_camera_point(point)
+                cv2.circle(self.resized_image, (int(camera_point.x), int(camera_point.y)), DOT_RADIUS, TOUCHING_GOOD_POINTS_COLOR, -1)
+            for point in self.game_path.touched_points:
+                camera_point = self.map_to_camera_point(point)
+                cv2.circle(self.resized_image, (int(camera_point.x), int(camera_point.y)), DOT_RADIUS, TOUCHED_GOOD_POINTS_COLOR, -1)
+            cv2.putText(self.resized_image, str(point.order+1), (int(camera_point.x), int(camera_point.y)), POINT_FONTFACE, POINT_FONTSCALE, POINT_TEXT_COLOR, POINT_TEXT_THICKNESS)
+
+        elif game_mode == GAME_MODE.ALPHABET:
+            for point in self.game_path.untouched_points:
+                camera_point = self.map_to_camera_point(point)
+                cv2.circle(self.resized_image, (int(camera_point.x), int(camera_point.y)), DOT_RADIUS, GOOD_POINTS_COLOR, -1)
+            for point in self.game_path.touching_points:
+                camera_point = self.map_to_camera_point(point)
+                cv2.circle(self.resized_image, (int(camera_point.x), int(camera_point.y)), DOT_RADIUS, TOUCHING_GOOD_POINTS_COLOR, -1)
+            for point in self.game_path.touched_points:
+                camera_point = self.map_to_camera_point(point)
+                cv2.circle(self.resized_image, (int(camera_point.x), int(camera_point.y)), DOT_RADIUS, TOUCHED_GOOD_POINTS_COLOR, -1)
+            cv2.putText(self.resized_image, point.alphabet, (int(camera_point.x), int(camera_point.y)), POINT_FONTFACE, POINT_FONTSCALE, POINT_TEXT_COLOR, POINT_TEXT_THICKNESS)
 
 
 #     def game_show_alphabets(self, path, point_index):
@@ -527,7 +546,7 @@ class PoseDetectionModule:
 #                                     thickness=3)
 
     def game_finish(self):
-        result = self.path.evaluate_result()
+        result = self.game_path.evaluate_result()
         self.toggle_record_video(False)
         return result
 
@@ -556,8 +575,10 @@ class PoseDetectionModule:
             else:
                 self.game_test_frames.pop(0)
                 average_time_between_frames = sum(self.game_test_frames) / len(self.game_test_frames)
-                self.path.game_load_sensitivity_level(average_time_between_frames=average_time_between_frames)                 
-                # self.sound_module.countdown()
+                save_load_module = SaveLoadModule()
+                sensitivity_level = save_load_module.load_settings().sensitivity_level
+                self.game_path.game_load_sensitivity_level(sensitivity_level=sensitivity_level, average_time_between_frames=average_time_between_frames)                 
+                self.sound_module.countdown()
                 self.camera_input()
 
 
@@ -569,51 +590,55 @@ class PoseDetectionModule:
 #         return (width, height)
 
 
-    def games_settings_show_game_points(self):
-        if self.path.game_mode == GAME_MODE.OBSTACLE:
-            for good_point in self.path.good_points:
-                good_camera_point = self.map_to_camera_point(universal_point=good_point)
-                cv2.circle(self.resized_image, (int(good_camera_point.x), int(good_camera_point.y)), DOT_RADIUS, GOOD_POINTS_COLOR, -1)
-            for bad_point in self.path.bad_points:
-                bad_camera_point = self.map_to_camera_point(bad_point)
-                cv2.circle(self.resized_image, (int(bad_camera_point.x), int(bad_camera_point.y)), DOT_RADIUS, BAD_POINTS_COLOR, -1)
+    # Methods (for SETTINGS Camera Mode)
 
-        elif self.path.game_mode == GAME_MODE.SEQUENCE:
-            for point in self.path.points:
+    def settings_start(self, path:Path, change_game_mode:bool=False):
+        self.camera_mode = CAMERA_MODE.SETTINGS
+        self.settings_path = path
+        self.settings_is_distance_calibration_shown = False
+        self.universal_points_history: list[list[Point]] = [self.settings_path.points.copy()]
+        self.redo_history: list[list[Point]] = []
+        if not change_game_mode:
+            self.camera_input()
+
+
+    def settings_show_game_points(self):
+        game_mode = self.settings_path.game_mode
+        if game_mode == GAME_MODE.OBSTACLE:
+            for point in self.settings_path.points:
+                if point.is_good:
+                    good_camera_point = self.map_to_camera_point(universal_point=point)
+                    cv2.circle(self.resized_image, (int(good_camera_point.x), int(good_camera_point.y)), DOT_RADIUS, GOOD_POINTS_COLOR, -1)
+                else:
+                    bad_camera_point = self.map_to_camera_point(universal_point=point)
+                    cv2.circle(self.resized_image, (int(bad_camera_point.x), int(bad_camera_point.y)), DOT_RADIUS, BAD_POINTS_COLOR, -1)
+
+        elif game_mode == GAME_MODE.SEQUENCE:
+            for point in self.settings_path.points:
                 camera_point = self.map_to_camera_point(universal_point=point)
                 cv2.circle(self.resized_image, (int(camera_point.x), int(camera_point.y)), DOT_RADIUS, GOOD_POINTS_COLOR, -1)
                 cv2.putText(self.resized_image, str(point.order+1), (int(camera_point.x), int(camera_point.y)), POINT_FONTFACE, POINT_FONTSCALE, POINT_TEXT_COLOR, POINT_TEXT_THICKNESS)
         
-        elif self.path.game_mode == GAME_MODE.ALPHABET:
-            for point in self.path.points:
+        elif game_mode == GAME_MODE.ALPHABET:
+            for point in self.settings_path.points:
                 camera_point = self.map_to_camera_point(universal_point=point)
                 cv2.circle(self.resized_image, (int(camera_point.x), int(camera_point.y)), DOT_RADIUS, GOOD_POINTS_COLOR, -1)
                 cv2.putText(self.resized_image, point.alphabet, (int(camera_point.x), int(camera_point.y)), POINT_FONTFACE, POINT_FONTSCALE, POINT_TEXT_COLOR, POINT_TEXT_THICKNESS)
 
 
-    # Methods (for SETTINGS Camera Mode)
-
-    def settings_start(self, path: Path):
-        self.camera_mode = CAMERA_MODE.SETTINGS
-        self.path = path
-        self.universal_points_history: list[list[Point]] = [self.path.points.copy()]
-        self.redo_history: list[list[Point]] = []
-        self.camera_input()
-
-
     def settings_update_settings(self, settings: Settings, is_distance_calibration_shown=False):
         self.settings = settings
-        self.is_distance_calibration_shown = is_distance_calibration_shown
+        self.settings_is_distance_calibration_shown = is_distance_calibration_shown
 
 
     def settings_screen_pressed(self, camera_point: Point):
         new_universal_point = self.map_to_universal_point(camera_point=camera_point)
-        if self.path.game_mode == GAME_MODE.SEQUENCE:
+        if self.settings_path.game_mode == GAME_MODE.SEQUENCE:
             new_universal_point.order = len(self.universal_points_history[-1])
         new_universal_points = self.universal_points_history[-1] + [new_universal_point]
         self.universal_points_history.append(new_universal_points)
         self.redo_history.clear()
-        self.path.settings_update_points(points=new_universal_points)
+        self.settings_path.settings_update_points(points=new_universal_points)
         
 
     def settings_undo(self):
@@ -621,14 +646,14 @@ class PoseDetectionModule:
             old_universal_points = self.universal_points_history.pop().copy()
             new_universal_points = self.universal_points_history[-1].copy()
             self.redo_history.append(old_universal_points)
-            self.path.settings_update_points(points=new_universal_points)
+            self.settings_path.settings_update_points(points=new_universal_points)
 
 
     def settings_redo(self):
         if len(self.redo_history) > 0:
             new_universal_points = self.redo_history.pop().copy()
             self.universal_points_history.append(new_universal_points)
-            self.path.settings_update_points(points=new_universal_points)
+            self.settings_path.settings_update_points(points=new_universal_points)
 
 
     def settings_clear_all_points(self):
@@ -637,7 +662,7 @@ class PoseDetectionModule:
             new_universal_points: list[Point] = []
             self.universal_points_history.append(new_universal_points)
             self.redo_history.clear()
-            self.path.settings_update_points(points=new_universal_points)
+            self.settings_path.settings_update_points(points=new_universal_points)
 
 
     def settings_done(self) -> tuple[Path, PathImage]:
@@ -652,8 +677,8 @@ class PoseDetectionModule:
         elif self.settings.camera_orientation_mode == CAMERA_ORIENTATION.INVERTED:
             saved_image = cv2.rotate(saved_image, cv2.ROTATE_180)
 
-        path_image = PathImage(path_id=self.path.id, image=saved_image)
-        return self.path, path_image
+        path_image = PathImage(path_id=self.settings_path.id, image=saved_image)
+        return self.settings_path, path_image
 
 
     # Debug Methods (for GAME Camera Mode)

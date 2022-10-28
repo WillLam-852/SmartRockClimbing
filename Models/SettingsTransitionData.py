@@ -1,3 +1,4 @@
+from __future__ import annotations
 from Models.Path.PathImage import PathImage
 from Models.Path.RenamedPath import RenamedPath
 from Models.SavedData.SavedRow import SavedRow

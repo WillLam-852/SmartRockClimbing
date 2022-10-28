@@ -297,9 +297,14 @@ class CameraScreen(Frame):
             self.path.game_mode = GAME_MODE.OBSTACLE
         gamemode_str = i18n.t(f't.game_mode_{str(self.path.game_mode.value)}')
         self.change_title(f"{self.path.name} ({gamemode_str})")
+        if self.path.game_mode == GAME_MODE.OBSTACLE:
+            self.reminder_label.config(text=f"""{i18n.t('t.press_left_mouse_button_for_new_touch_point')}
+{i18n.t('t.press_right_mouse_button_for_new_avoid_point')}""")
+        elif self.path.game_mode == GAME_MODE.SEQUENCE or self.path.game_mode == GAME_MODE.ALPHABET:
+            self.reminder_label.config(text=f"{i18n.t('t.press_left_mouse_button_for_new_touch_point')}")
         # Clear all points when change game mode
         self.path.settings_update_points(points=[])
-        self.pose_detection_module.settings_start(path=self.path)
+        self.pose_detection_module.settings_start(path=self.path, change_game_mode=True)
 
 
     def settings_undo_btn_pressed(self):
@@ -345,7 +350,7 @@ class CameraScreen(Frame):
         Return true if valid, false otherwise.
         """
         if path.game_mode == GAME_MODE.OBSTACLE:
-            if len(path.good_points) == 0:
+            if not path.settings_obstacle_is_any_good_points():
                 # If there is no good point, show error message
                 ctypes.windll.user32.MessageBoxW(0, i18n.t('t.error_path'), i18n.t('t.error'), 0)
                 return False

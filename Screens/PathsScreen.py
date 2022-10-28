@@ -1,4 +1,5 @@
 import ctypes
+from datetime import datetime
 import i18n
 import uuid
 import tkinter.messagebox
@@ -120,7 +121,7 @@ class PathsScreen(Frame):
         new_name = askstring(i18n.t('t.rename_path'), i18n.t('t.what_is_the_name_of_new_path?'))
         if self.check_is_new_path_name_valid(new_name) == False:
             return
-        new_path = Path(id=uuid.uuid1(), name=new_name, game_mode=GAME_MODE.OBSTACLE, points=[])
+        new_path = Path(id=uuid.uuid1(), created_timestamp=datetime.today().timestamp(), name=new_name, game_mode=GAME_MODE.OBSTACLE, points=[])
         self.navigate(SCREEN.CAMERA, camera_mode=CAMERA_MODE.SETTINGS, path=new_path, settings_transition_data=self.settings_transition_data)
 
 
@@ -174,11 +175,13 @@ class PathsScreen(Frame):
             for row in self.saved_rows:
                 if path_name == row.path_name:
                     path_id = row.path_id
+                    path_created_timestamp = row.path_created_timestamp
                     path_game_mode = row.path_game_mode
                     points.append(Point(x=row.point_x, y=row.point_y, is_good=row.point_is_good, order=row.point_order, alphabet=row.point_alphabet))
             if path_id and path_game_mode:
                 return Path(
                     id=path_id,
+                    created_timestamp=path_created_timestamp,
                     name=path_name,
                     game_mode=path_game_mode,
                     points=points
@@ -194,10 +197,24 @@ class PathsScreen(Frame):
 
     def gui_update(self):
         self.path_listbox.delete(0, END)
-        path_names: List[str] = []
+        paths: List[Path] = []
         for row in self.saved_rows:
-            gamemode_str = i18n.t(f't.game_mode_{str(row.path_game_mode.value)}')
-            path_names.append(f"{row.path_name} ({gamemode_str})")
-        path_names = list(set(path_names))
+            path = Path(id=row.path_id, name=row.path_name, game_mode=row.path_game_mode, points=[], created_timestamp=row.path_created_timestamp)
+            paths.append(path)
+
+        # Sort By Path Created Time (Descending)
+        paths.sort(key=self.get_path_created_timestamp, reverse=True)
+
+        path_names: List[str] = []
+        for path in paths:
+            gamemode_str = i18n.t(f't.game_mode_{str(path.game_mode.value)}')
+            name = f"{path.name} ({gamemode_str})"
+            # Ensure there is no repeated name
+            if path_names.count(name) == 0:
+                path_names.append(name)
         for path_name in path_names:
             self.path_listbox.insert(END, path_name)
+
+
+    def get_path_created_timestamp(self, path: Path) -> float:
+        return path.created_timestamp

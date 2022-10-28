@@ -103,6 +103,7 @@ LOCALE = "locale"
 
 # Map Variables Name
 PATH_ID = "path_id"
+PATH_CREATED_TIMESTAMP = "path_created_timestamp"
 PATH_NAME = "path_name"
 PATH_GAME_MODE = "path_game_mode"
 POINT_X = "point_x"

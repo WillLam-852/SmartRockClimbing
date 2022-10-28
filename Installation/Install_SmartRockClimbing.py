@@ -17,11 +17,11 @@ if hasattr(sys, "_MEIPASS"):
     src = os.path.join(sys._MEIPASS, "Data")
 else:
     src = "./Data"
-dst = os.path.expanduser("~/RockClimbing/Data")
+dst = os.path.expanduser("~/SmartRockClimbing/Data")
 copytree(src, dst)
 
 MessageBox = ctypes.windll.user32.MessageBoxW
-if os.path.exists(os.path.expanduser("~/RockClimbing/Data")):
-    MessageBox(None, 'Successful', 'Install RockClimbing', 0)
+if os.path.exists(os.path.expanduser("~/SmartRockClimbing/Data")):
+    MessageBox(None, 'Successful', 'Install SmartRockClimbing', 0)
 else:
-    MessageBox(None, 'Unsuccessful', 'Install RockClimbing', 0)
+    MessageBox(None, 'Unsuccessful', 'Install SmartRockClimbing', 0)

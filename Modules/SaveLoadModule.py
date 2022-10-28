@@ -13,7 +13,7 @@ from Utilities.Constants import *
 from Utilities.OpenFile import open_file
 
 class SaveLoadModule:
-    csv_column_names = [PATH_ID, PATH_NAME, PATH_GAME_MODE, POINT_X, POINT_Y, POINT_IS_GOOD, POINT_ORDER, POINT_ALPHABET]
+    csv_column_names = [PATH_ID, PATH_CREATED_TIMESTAMP, PATH_NAME, PATH_GAME_MODE, POINT_X, POINT_Y, POINT_IS_GOOD, POINT_ORDER, POINT_ALPHABET]
     
     def __init__(self):
         self.settings = Settings()
@@ -59,13 +59,14 @@ class SaveLoadModule:
 
     def load_path_data(self) -> List[SavedRow]:
         try:
-            df = pd.read_csv( open_file(PATH_FILE_LOCATION), usecols=self.csv_column_names, keep_default_na=False).sort_values(by=['path_id'])
+            df = pd.read_csv( open_file(PATH_FILE_LOCATION), usecols=self.csv_column_names, keep_default_na=False)
             df_dict = df.to_dict()
             df_list = df.values.tolist()
             savedRows: List[SavedRow] = []
             for i in range(len(df_list)):
                 savedData = SavedRow(
                     path_id=df_dict[PATH_ID][i], 
+                    path_created_timestamp=df_dict[PATH_CREATED_TIMESTAMP][i],
                     path_name=df_dict[PATH_NAME][i], 
                     path_game_mode=GAME_MODE(df_dict[PATH_GAME_MODE][i]), 
                     point_x=float(df_dict[POINT_X][i]),
@@ -87,12 +88,12 @@ class SaveLoadModule:
         if len(settings_transition_data.saved_rows) > 0:
             saved_path_data = []
             for row in settings_transition_data.saved_rows:
-                saved_row = [row.path_id, row.path_name, row.path_game_mode.value, row.point_x, row.point_y, row.point_is_good, row.point_order, row.point_alphabet]
+                saved_row = [row.path_id, row.path_created_timestamp, row.path_name, row.path_game_mode.value, row.point_x, row.point_y, row.point_is_good, row.point_order, row.point_alphabet]
                 saved_path_data.append(saved_row)
             df = pd.DataFrame(saved_path_data, columns=self.csv_column_names)
             df.to_csv( open_file(PATH_FILE_LOCATION) )
         else:
-            df = pd.DataFrame([['','','','','','','','']], columns=self.csv_column_names)
+            df = pd.DataFrame([['','','','','','','','','']], columns=self.csv_column_names)
             df = df[df.path_id != '']
             df.to_csv( open_file(PATH_FILE_LOCATION) )
 
