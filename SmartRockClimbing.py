@@ -17,6 +17,7 @@ from Widgets.ControlBar import ControlBar
 from Screens.HomeScreen import HomeScreen
 from Screens.CameraScreen import CameraScreen
 from Screens.PathsScreen import PathsScreen
+from Screens.ResultScreen import ResultScreen
 from Screens.SettingsScreen import SettingsScreen
 
 class SmartRockClimbing:
@@ -80,8 +81,15 @@ class SmartRockClimbing:
                 change_buttons=self.change_buttons, 
                 bg=THEME_COLOR
             )
-        # elif screen_to == SCREEN.RESULT:
-        #     self.current_screen = self.result_view
+        elif screen_to == SCREEN.RESULT:
+            self.current_screen = ResultScreen(
+                self.root, 
+                view_size=self.view_size, 
+                navigate=self.navigate, 
+                change_title=self.change_title, 
+                change_buttons=self.change_buttons, 
+                bg=THEME_COLOR
+            )
         # elif screen_to == SCREEN.RECORDINGS:
         #     self.current_screen = self.recordings_view
         # elif screen_to == SCREEN.VIDEO:

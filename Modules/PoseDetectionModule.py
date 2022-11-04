@@ -206,7 +206,7 @@ class PoseDetectionModule:
                 self.game_show_alphabets()
 
             self.game_calculate_pose(results.pose_landmarks)
-            # self.game_update_progress_label(self.path_in_camera)
+            self.game_update_progress_label(self.game_path)
 
             # For Debugging, use mouse to simulate body point
             if DEBUG_MODE and self.debug_game_camera_point:
@@ -471,12 +471,15 @@ class PoseDetectionModule:
                 self.game_path.game_evaluate_body_point(universal_body_point=universal_body_point)
 
 
-#     def game_update_progress_label(self, path):
-#         if path:
-#             if self.gamemode == GAME_MODE.OBSTACLE or self.gamemode == GAME_MODE.SEQUENCE:
-#                 self.update_progress_label(len(path.touched_good_points), len(path.good_points))
-#             elif self.gamemode == GAME_MODE.ALPHABET:
-#                 self.update_progress_label(len(path.player_input_alphabets), 0)
+    def game_update_progress_label(self, game_path: GamePath):
+        if game_path:
+            if self.game_path.game_mode == GAME_MODE.OBSTACLE:
+                self.game_progress_callback(touched=len(game_path.touched_good_points), all=game_path.obstacle_mode_get_all_good_points_number())
+            elif self.game_path.game_mode == GAME_MODE.SEQUENCE:
+                pass
+            elif self.game_path.game_mode == GAME_MODE.ALPHABET:
+                pass
+                # self.update_progress_label(touched=len(game_path.player_input_alphabets), all=0)
             
 
     def game_show_game_points(self):

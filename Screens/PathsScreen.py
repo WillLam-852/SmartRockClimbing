@@ -173,7 +173,7 @@ class PathsScreen(Frame):
             path_game_mode: GAME_MODE = None
             points: list[Point] = []
             for row in self.saved_rows:
-                if path_name == row.path_name:
+                if path_name == str(row.path_name):
                     path_id = row.path_id
                     path_created_timestamp = row.path_created_timestamp
                     path_game_mode = row.path_game_mode

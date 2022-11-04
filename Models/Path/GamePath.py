@@ -24,11 +24,12 @@ class GamePath:
         self.touching_points: list[Point] = []
         self.touched_points: list[Point] = []
         self.sound_module = SoundModule()
-        if path.game_mode == GAME_MODE.OBSTACLE:
+        self.game_mode = path.game_mode
+        if self.game_mode == GAME_MODE.OBSTACLE:
             self.obstacle_mode_create_good_bad_points_list()
-        elif path.game_mode == GAME_MODE.SEQUENCE:
+        elif self.game_mode == GAME_MODE.SEQUENCE:
             self.sequence_current_order = 0
-        elif path.game_mode == GAME_MODE.ALPHABET:
+        elif self.game_mode == GAME_MODE.ALPHABET:
             self.alphabet_player_input_alphabets: list[str] = []
 
 
@@ -49,6 +50,14 @@ class GamePath:
         self.touching_bad_points: list[Point] = []
         self.touched_good_points: list[Point] = []
         self.touched_bad_points: list[Point] = []
+
+
+    def obstacle_mode_get_all_good_points_number(self) -> int:
+        """
+        Get the good points list (for showing the total number in progress label)
+        """
+        good_points: list[Point] = self.untouched_good_points + self.touched_good_points
+        return len(good_points)
 
 
     def game_load_sensitivity_level(self, sensitivity_level: SENSITIVITY_LEVEL, average_time_between_frames: float):
@@ -107,7 +116,7 @@ class GamePath:
                         self.touched_bad_points.append(point)
                         self.sound_module.bad_point()
 
-        elif self.gamemode == GAME_MODE.SEQUENCE:
+        elif self.path.game_mode == GAME_MODE.SEQUENCE:
             for point in self.untouched_points:
                 if point.order == self.sequence_current_order and self.distance_between(universal_body_point, point) < self.touch_distance:
                     # Append this point (with duplicates)
@@ -120,7 +129,7 @@ class GamePath:
                         self.sound_module.good_point()
                         self.sequence_current_order += 1
 
-        elif self.gamemode == GAME_MODE.ALPHABET:
+        elif self.path.game_mode == GAME_MODE.ALPHABET:
             for point in self.points:
                 if self.distance_between(universal_body_point, point) < self.touch_distance:
                     # Append this point (with duplicates)

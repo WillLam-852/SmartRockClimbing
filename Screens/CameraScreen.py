@@ -1,5 +1,6 @@
 import ctypes
 import i18n
+import gc
 from tkinter import *
 from tkinter.simpledialog import askstring
 
@@ -13,6 +14,7 @@ from Models.Path.Point import Point
 from Models.Resolution import Resolution
 from Models.SavedData.SavedRow import SavedRow
 from Models.SettingsTransitionData import SettingsTransitionData
+from Models.Timer.Timer import Timer
 from Modules.PoseDetectionModule import PoseDetectionModule
 from Modules.SaveLoadModule import SaveLoadModule
 from Utilities.Constants import *
@@ -24,7 +26,6 @@ class CameraScreen(Frame):
         Frame.__init__(self, *arg, **kwargs)
         
         self.view_size = view_size
-
         self.navigate_after_stop_camera = navigate
         self.change_title = change_title
         self.change_buttons = change_buttons
@@ -34,9 +35,9 @@ class CameraScreen(Frame):
 
         self.distance_angle_label = Label(self, font=(FONT_FAMILY, TITLE_FONT_SIZE), bg=THEME_COLOR)
         self.status_label = Label(self, font=(FONT_FAMILY, TITLE_FONT_SIZE), bg=THEME_COLOR)
-        # self.countdown_label = Label(self, font=(FONT_FAMILY, COUNTDOWN_FONT_SIZE), borderwidth=5, relief='solid', bg=THEME_COLOR)
-        # self.timer_label = Label(self, font=(FONT_FAMILY, TITLE_FONT_SIZE), bg=THEME_COLOR)
-        # self.progress_label = Label(self, font=(FONT_FAMILY, TITLE_FONT_SIZE), bg=THEME_COLOR)
+        self.countdown_label = Label(self, font=(FONT_FAMILY, COUNTDOWN_FONT_SIZE), borderwidth=5, relief='solid', bg=THEME_COLOR)
+        self.timer_label = Label(self, font=(FONT_FAMILY, TITLE_FONT_SIZE), bg=THEME_COLOR)
+        self.progress_label = Label(self, font=(FONT_FAMILY, TITLE_FONT_SIZE), bg=THEME_COLOR)
         self.reminder_label = Label(self, font=(FONT_FAMILY, SUBTITLE_FONT_SIZE), bg=THEME_COLOR)
 
         self.gui_set()
@@ -44,8 +45,8 @@ class CameraScreen(Frame):
         self.save_load_module = SaveLoadModule()
         self.pose_detection_module = PoseDetectionModule()
         
-#         # self.countdown = None
-#         # self.timer = None
+        self.countdown = None
+        self.timer = None
 
 
     # Navigation Methods
@@ -131,10 +132,10 @@ class CameraScreen(Frame):
 
     def navigate(self, view, **kwargs):
         self.pose_detection_module.stop_camera_input()
-        # if self.countdown is not None:
-        #     self.countdown.reset()
-        # if self.timer is not None:
-        #     self.timer.reset()
+        if self.camera_mode == CAMERA_MODE.GAME:
+            del(self.countdown)
+            del(self.timer)
+            gc.collect()
         self.navigate_after_stop_camera(view, **kwargs)
 
 
@@ -217,45 +218,44 @@ class CameraScreen(Frame):
         if self.path.game_mode == GAME_MODE.OBSTACLE or self.path.game_mode == GAME_MODE.SEQUENCE:
             self.progress_label.config(text=f"{touched}/{all}")
             if touched == all:
-                self.finish_btn_pressed()
+                self.game_finish_btn_pressed()
         elif self.path.game_mode == GAME_MODE.ALPHABET:
             self.progress_label.config(text=f"{touched}")
 
 
     def game_finish_btn_pressed(self):
-        pass
-        # result = self.pose_detection_module.game_finish()
-        # result.update_time(self.timer_label['text'])
-        # self.navigate(SCREEN.RESULT, result=result, gamemode=self.path.game_mode)
+        result = self.pose_detection_module.game_finish()
+        result.update_time(self.timer_label['text'])
+        self.navigate(SCREEN.RESULT, result=result, gamemode=self.path.game_mode)
 
 
     def game_leave_btn_pressed(self):
         self.navigate(SCREEN.PATHS, camera_mode=CAMERA_MODE.GAME)
 
 
-#     # Timer Methods (Game)
+    # Timer Methods (for GAME Camera Mode)
 
-#     def countdown_update(self, time):
-#         self.countdown_label.config(text=time[-1])
-
-
-#     def countdown_finish(self):
-#         self.countdown_label.place_forget()
-#         self.timer = Timer(self.timer_update)
-#         self.timer.start()
-#         self.timer_label.place(relx=1.0, width=200, height=CONTROL_BAR_BUTTON_HEIGHT, anchor=NE)
-#         self.progress_label.place(y=CONTROL_BAR_BUTTON_HEIGHT, relx=1.0, width=200, height=CONTROL_BAR_BUTTON_HEIGHT, anchor=NE)
+    def countdown_update(self, time):
+        self.countdown_label.config(text=time[-1])
 
 
-#     def timer_update(self, time):
-#         self.timer_label.config(text=time)
+    def countdown_finish(self):
+        self.countdown_label.place_forget()
+        self.timer = Timer(self.timer_update)
+        self.timer.start()
+        self.timer_label.place(relx=1.0, width=200, height=CONTROL_BAR_BUTTON_HEIGHT, anchor=NE)
+        self.progress_label.place(y=CONTROL_BAR_BUTTON_HEIGHT, relx=1.0, width=200, height=CONTROL_BAR_BUTTON_HEIGHT, anchor=NE)
 
 
-#     def clear_labels(self):
-#         self.countdown_label.place_forget()
-#         self.reminder_label.place_forget()
-#         self.timer_label.place_forget()
-#         self.progress_label.place_forget()
+    def timer_update(self, time):
+        self.timer_label.config(text=time)
+
+
+    def clear_labels(self):
+        self.countdown_label.place_forget()
+        self.reminder_label.place_forget()
+        self.timer_label.place_forget()
+        self.progress_label.place_forget()
 
 
     # Methods (for SETTINGS Camera Mode)
@@ -400,9 +400,9 @@ class CameraScreen(Frame):
                 2: ControlBarButton(i18n.t('t.record'), lambda: self. game_change_camera_state(CAMERA_STATE.RECORDING)),
                 9: ControlBarButton(i18n.t('t.leave'), self.game_leave_btn_pressed, THEME_COLOR_PINK)
             }
-            # self.countdown = Timer(self.countdown_update, True, 6, self.countdown_finish)
-            # self.countdown.start()
-            # self.countdown_label.place(relx=0.5, rely=0.5, width=400, height=400, anchor=CENTER)
+            self.countdown = Timer(second_callback=self.countdown_update, countdown=True, time=6, finish_callback=self.countdown_finish)
+            self.countdown.start()
+            self.countdown_label.place(relx=0.5, rely=0.5, width=400, height=400, anchor=CENTER)
             # self.reminder_label.config(text=f"{i18n.t('t.DANGER_ALERT_Two_hands_are_outside_feet_area')}")
 
             # TODO: Projector Mode
