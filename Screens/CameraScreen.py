@@ -224,9 +224,9 @@ class CameraScreen(Frame):
 
 
     def game_finish_btn_pressed(self):
-        result = self.pose_detection_module.game_finish()
-        result.update_time(self.timer_label['text'])
-        self.navigate(SCREEN.RESULT, result=result, gamemode=self.path.game_mode)
+        game_result = self.pose_detection_module.game_finish()
+        game_result.update_time(self.timer_label['text'])
+        self.navigate(SCREEN.RESULT, path=self.path, game_result=game_result)
 
 
     def game_leave_btn_pressed(self):

@@ -2,6 +2,7 @@ import numpy as np
 
 from Models.Enums.GameMode import GAME_MODE
 from Models.Enums.SensitivityLevel import SENSITIVITY_LEVEL
+from Models.Path.GameResult import GameResult
 from Models.Path.Path import Path
 from Models.Path.Point import Point
 from Modules.SoundModule import SoundModule
@@ -141,6 +142,11 @@ class GamePath:
                         self.touched_points.append(point)
                         self.sound_module.good_point()
                         self.alphabet_player_input_alphabets.append(point.alphabet)
+
+
+    def game_evaluate_result(self):
+        result = GameResult(self.path)
+        return result
 
 
     def distance_between(self, pt1: Point, pt2: Point) -> float:

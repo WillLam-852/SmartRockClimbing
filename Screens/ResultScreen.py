@@ -5,7 +5,10 @@ import numpy as np
 from tkinter import *
 
 from Models.Enums.CameraOrientation import CAMERA_ORIENTATION
+from Models.Enums.GameMode import GAME_MODE
 from Models.Enums.Screen import SCREEN
+from Models.Path.GameResult import GameResult
+from Models.Path.Path import Path
 from Models.Resolution import Resolution
 from Modules.PoseDetectionModule import PoseDetectionModule
 from Modules.SaveLoadModule import SaveLoadModule
@@ -35,7 +38,15 @@ class ResultScreen(Frame):
 
     # Navigation Methods
 
-    def launch(self, result, gamemode):
+    def launch(self, path: Path, game_result: GameResult):
+        """
+        Parameters
+        ----------
+        path : Path
+            current path
+        game_result : GameResult
+            current game result
+        """
         self.settings = SaveLoadModule().load_settings()
         i18n.set('locale', SaveLoadModule().load_locale())
         self.change_title(i18n.t('t.result'))
@@ -45,33 +56,56 @@ class ResultScreen(Frame):
         }
         self.change_buttons(self.buttons)
 
-        self.result = result
-        self.gamemode = gamemode
-        self.show(self.result, self.gamemode)
+        self.game_result: GameResult = game_result
+        self.path: Path = path
+        self.show()
 
 
-    def show(self, results, gamemode):
-        if gamemode == 2:
-            self.timer_label.config(text=f"{i18n.t('t.time')}: {results.get_time()}")
+    def show(self):
+        time = self.game_result.get_time()
+        self.timer_label.config(text=f"{i18n.t('t.time')}: {time}")
+
+        if self.path.game_mode == GAME_MODE.OBSTACLE:
+            touched_good_points_number, total_good_points_number = self.game_result.get_good_points_number()
+            add_scores: int = touched_good_points_number * TOUCHED_GOOD_POINT_WEIGHT
+            self.good_points_label.config(
+                text=f'''{i18n.t('t.touch_points')}: {touched_good_points_number} / {total_good_points_number}
+            {i18n.t('t.scores_get')}:   {TOUCHED_GOOD_POINT_WEIGHT} x {touched_good_points_number} = {add_scores}''')
+
+            touched_bad_points_number, total_bad_points_number = self.game_result.get_bad_points_number()
+            minus_scores: int = touched_bad_points_number * TOUCHED_BAD_POINT_WEIGHT
+            self.bad_points_label.config(
+                text=f'''{i18n.t('t.avoid_points')}: {touched_bad_points_number} / {total_bad_points_number}
+            {i18n.t('t.scores_deducted')}: {TOUCHED_BAD_POINT_WEIGHT} x {touched_bad_points_number} = {minus_scores}''')
+
+            score = self.game_result.get_score()
+            full_score = self.game_result.get_full_score()
+            self.score_label.config(text=f"{i18n.t('t.total_score')}: {score}")
+            self.full_score_label.config(text=f"{i18n.t('t.full_score')}: {full_score}")
+
+        elif self.path.game_mode == GAME_MODE.SEQUENCE:
+            touched_good_points_number, total_good_points_number = self.game_result.get_good_points_number()
+            add_scores: int = touched_good_points_number * TOUCHED_GOOD_POINT_WEIGHT
+            self.good_points_label.config(
+                text=f'''{i18n.t('t.touch_points')}: {touched_good_points_number} / {total_good_points_number}
+            {i18n.t('t.scores_get')}:   {TOUCHED_GOOD_POINT_WEIGHT} x {touched_good_points_number} = {add_scores}''')
+
+            score = self.game_result.get_score()
+            full_score = self.game_result.get_full_score()
+            self.score_label.config(text=f"{i18n.t('t.total_score')}: {score}")
+            self.full_score_label.config(text=f"{i18n.t('t.full_score')}: {full_score}")
+
+        elif self.path.game_mode == GAME_MODE.ALPHABET:
             self.good_points_label.config(text=f"The word you have spelt is:")
-            self.bad_points_label.config(text=f"{results.get_word()}")
+            self.bad_points_label.config(text=f"{self.game_result.get_word()}")
             self.score_label.config(text="")
             self.full_score_label.config(text="")
-        else:
-            self.timer_label.config(text=f"{i18n.t('t.time')}: {results.get_time()}")
-            self.good_points_label.config(
-                text=f'''{i18n.t('t.touch_points')}: {results.get_good_points()[0]} / {results.get_good_points()[1]}
-            {i18n.t('t.scores_get')}:   {TOUCHED_GOOD_POINT_WEIGHT} x {results.get_good_points()[0]} = {results.get_score()[0]}''')
-            self.bad_points_label.config(
-                text=f'''{i18n.t('t.avoid_points')}: {results.get_bad_points()[0]} / {results.get_bad_points()[1]}
-            {i18n.t('t.scores_deducted')}: {TOUCHED_BAD_POINT_WEIGHT} x {results.get_bad_points()[0]} = {results.get_score()[1]}''')
-            self.score_label.config(text=f"{i18n.t('t.total_score')}: {results.get_score()[2]}")
-            self.full_score_label.config(
-                text=f"{i18n.t('t.full_score')}: {int(TOUCHED_GOOD_POINT_WEIGHT * results.get_good_points()[1])}")
+
+
     # Button Actions
 
     def view_image_btn_pressed(self):
-        self.numpy_img, touched_good_points, untouched_good_points, touched_bad_points, untouched_bad_points = self.result.get_image_and_points()
+        self.numpy_img, touched_good_points, untouched_good_points, touched_bad_points, untouched_bad_points = self.game_result.get_image_and_points()
 
         if self.settings.mirror_camera:
             self.numpy_img = cv2.flip(self.numpy_img, 1)

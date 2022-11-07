@@ -549,9 +549,9 @@ class PoseDetectionModule:
 #                                     thickness=3)
 
     def game_finish(self):
-        result = self.game_path.evaluate_result()
+        game_result = self.game_path.game_evaluate_result()
         self.toggle_record_video(False)
-        return result
+        return game_result
 
 
     def game_test_frame_rate(self):
