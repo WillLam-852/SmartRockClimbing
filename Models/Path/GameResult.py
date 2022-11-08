@@ -7,12 +7,14 @@ from Utilities.Constants import *
 from Utilities.OpenFile import open_file
 
 class GameResult:
-    def __init__(self, path: Path, touched_good_points: list[Point], untouched_good_points: list[Point], touched_bad_points: list[Point], untouched_bad_points: list[Point], alphabets: list[str]):
+    def __init__(self, path: Path, touched_good_points: list[Point], untouched_good_points: list[Point], touched_bad_points: list[Point], untouched_bad_points: list[Point], touched_points: list[Point], untouched_points: list[Point], alphabets: list[str]):
         self.path = path
         self.touched_good_points: list[Point] = touched_good_points
         self.untouched_good_points: list[Point] = untouched_good_points
         self.touched_bad_points: list[Point] = touched_bad_points
         self.untouched_bad_points: list[Point] = untouched_bad_points
+        self.touched_points: list[Point] = touched_points
+        self.untouched_points: list[Point] = untouched_points
         self.alphabets: list[str] = alphabets
         self.evaluate(game_mode=path.game_mode)
 
@@ -23,7 +25,7 @@ class GameResult:
             minus_scores: int = len(self.touched_bad_points) * TOUCHED_BAD_POINT_WEIGHT
             self.score = add_scores - minus_scores
         elif game_mode == GAME_MODE.SEQUENCE:
-            add_scores: int = len(self.touched_good_points) * TOUCHED_GOOD_POINT_WEIGHT
+            add_scores: int = len(self.touched_points) * TOUCHED_GOOD_POINT_WEIGHT
             self.score = add_scores
         
 
@@ -46,25 +48,39 @@ class GameResult:
         return full_score
 
 
-    def get_good_points_number(self) -> tuple[int, int]:
+    def obstacle_mode_get_good_points_number(self) -> tuple[int, int]:
         """
-        Get the number of touched good points, and the number of total good points
+        Get the number of touched good points, and the number of total good points (for OBSTACLE MODE only)
         """
         return len(self.touched_good_points), len(self.touched_good_points)+len(self.untouched_good_points)
 
 
-    def get_bad_points_number(self) -> tuple[int, int]:
+    def obstacle_mode_get_bad_points_number(self) -> tuple[int, int]:
         """
-        Get the number of touched bad points, and the number of total bad points
+        Get the number of touched bad points, and the number of total bad points (for OBSTACLE MODE only)
         """
         return len(self.touched_bad_points), len(self.touched_bad_points)+len(self.untouched_bad_points)
 
 
-    def get_points_lists(self) -> tuple[list[Point], list[Point], list[Point], list[Point]]:
+    def obstacle_mode_get_points_lists(self) -> tuple[list[Point], list[Point], list[Point], list[Point]]:
         """
-        Get the lists of touched_good_points, untouched_good_points, touched_bad_points, and untouched_bad_points
+        Get the lists of touched_good_points, untouched_good_points, touched_bad_points, and untouched_bad_points (for OBSTACLE MODE only)
         """
         return self.touched_good_points, self.untouched_good_points, self.touched_bad_points, self.untouched_bad_points
+
+
+    def sequence_mode_get_good_points_number(self) -> tuple[int, int]:
+        """
+        Get the number of touched points, and the number of total points (for SEQUENCE MODE only)
+        """
+        return len(self.touched_points), len(self.touched_points)+len(self.untouched_points)
+
+
+    def sequence_mode_get_points_lists(self) -> tuple[list[Point], list[Point]]:
+        """
+        Get the lists of touched_points, untouched_points (for SEQUENCE MODE only)
+        """
+        return self.touched_points, self.untouched_points
 
 
     # def get_word(self):

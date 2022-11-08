@@ -208,7 +208,7 @@ class PoseDetectionModule:
                     self.game_show_alphabets()
 
                 self.game_calculate_pose(results.pose_landmarks)
-                self.game_update_progress_label(self.game_path)
+                self.game_update_progress_label(game_path=self.game_path)
 
                 # For Debugging, use mouse to simulate body point
                 if DEBUG_MODE and self.debug_game_camera_point:
@@ -477,9 +477,9 @@ class PoseDetectionModule:
     def game_update_progress_label(self, game_path: GamePath):
         if game_path:
             if self.game_path.game_mode == GAME_MODE.OBSTACLE:
-                self.game_progress_callback(touched=len(game_path.touched_good_points), all=game_path.get_all_good_points_number())
+                self.game_progress_callback(touched=len(game_path.touched_good_points), all=game_path.obstacle_mode_get_total_good_points_number())
             elif self.game_path.game_mode == GAME_MODE.SEQUENCE:
-                self.game_progress_callback(touched=len(game_path.touched_good_points), all=game_path.get_all_good_points_number())
+                self.game_progress_callback(touched=len(game_path.touched_points), all=game_path.sequence_mode_get_total_points_number())
             elif self.game_path.game_mode == GAME_MODE.ALPHABET:
                 pass
                 # self.update_progress_label(touched=len(game_path.player_input_alphabets), all=0)
@@ -513,13 +513,15 @@ class PoseDetectionModule:
             for point in self.game_path.untouched_points:
                 camera_point = self.map_to_camera_point(point)
                 cv2.circle(self.resized_image, (int(camera_point.x), int(camera_point.y)), DOT_RADIUS, GOOD_POINTS_COLOR, -1)
+                cv2.putText(self.resized_image, str(point.order+1), (int(camera_point.x), int(camera_point.y)), POINT_FONTFACE, POINT_FONTSCALE, POINT_TEXT_COLOR, POINT_TEXT_THICKNESS)
             for point in self.game_path.touching_points:
                 camera_point = self.map_to_camera_point(point)
                 cv2.circle(self.resized_image, (int(camera_point.x), int(camera_point.y)), DOT_RADIUS, TOUCHING_GOOD_POINTS_COLOR, -1)
+                cv2.putText(self.resized_image, str(point.order+1), (int(camera_point.x), int(camera_point.y)), POINT_FONTFACE, POINT_FONTSCALE, POINT_TEXT_COLOR, POINT_TEXT_THICKNESS)
             for point in self.game_path.touched_points:
                 camera_point = self.map_to_camera_point(point)
                 cv2.circle(self.resized_image, (int(camera_point.x), int(camera_point.y)), DOT_RADIUS, TOUCHED_GOOD_POINTS_COLOR, -1)
-            cv2.putText(self.resized_image, str(point.order+1), (int(camera_point.x), int(camera_point.y)), POINT_FONTFACE, POINT_FONTSCALE, POINT_TEXT_COLOR, POINT_TEXT_THICKNESS)
+                cv2.putText(self.resized_image, str(point.order+1), (int(camera_point.x), int(camera_point.y)), POINT_FONTFACE, POINT_FONTSCALE, POINT_TEXT_COLOR, POINT_TEXT_THICKNESS)
 
         elif game_mode == GAME_MODE.ALPHABET:
             for point in self.game_path.untouched_points:

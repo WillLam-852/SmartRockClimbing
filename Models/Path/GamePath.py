@@ -50,12 +50,20 @@ class GamePath:
         self.touched_bad_points: list[Point] = []
 
 
-    def get_all_good_points_number(self) -> int:
+    def obstacle_mode_get_total_good_points_number(self) -> int:
         """
-        Get the good points list (for showing the total number in progress label)
+        Get the number of total good points (for showing the total number in progress label) (Used in OBSTACLE Game Mode only)
         """
         good_points: list[Point] = self.untouched_good_points + self.touched_good_points
         return len(good_points)
+
+
+    def sequence_mode_get_total_points_number(self) -> int:
+        """
+        Get the number of total points (for showing the total number in progress label) (Used in SEQUENCE Game Mode only)
+        """
+        points: list[Point] = self.untouched_points + self.touched_points
+        return len(points)
 
 
     def game_load_sensitivity_level(self, sensitivity_level: SENSITIVITY_LEVEL, average_time_between_frames: float):
@@ -148,6 +156,8 @@ class GamePath:
             untouched_good_points=self.untouched_good_points,
             touched_bad_points=self.touched_bad_points,
             untouched_bad_points=self.untouched_bad_points,
+            touched_points=self.touched_points,
+            untouched_points=self.untouched_points,
             alphabets=self.alphabet_player_input_alphabets
         )
         return result

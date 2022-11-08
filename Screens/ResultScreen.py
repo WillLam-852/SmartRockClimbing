@@ -66,13 +66,13 @@ class ResultScreen(Frame):
         self.timer_label.config(text=f"{i18n.t('t.time')}: {time}")
 
         if self.path.game_mode == GAME_MODE.OBSTACLE:
-            touched_good_points_number, total_good_points_number = self.game_result.get_good_points_number()
+            touched_good_points_number, total_good_points_number = self.game_result.obstacle_mode_get_good_points_number()
             add_scores: int = touched_good_points_number * TOUCHED_GOOD_POINT_WEIGHT
             self.good_points_label.config(
                 text=f'''{i18n.t('t.touch_points')}: {touched_good_points_number} / {total_good_points_number}
 {i18n.t('t.scores_get')}:   {TOUCHED_GOOD_POINT_WEIGHT} x {touched_good_points_number} = {add_scores}''')
 
-            touched_bad_points_number, total_bad_points_number = self.game_result.get_bad_points_number()
+            touched_bad_points_number, total_bad_points_number = self.game_result.obstacle_mode_get_bad_points_number()
             minus_scores: int = touched_bad_points_number * TOUCHED_BAD_POINT_WEIGHT
             self.bad_points_label.config(
                 text=f'''{i18n.t('t.avoid_points')}: {touched_bad_points_number} / {total_bad_points_number}
@@ -84,11 +84,11 @@ class ResultScreen(Frame):
             self.full_score_label.config(text=f"{i18n.t('t.full_score')}: {full_score}")
 
         elif self.path.game_mode == GAME_MODE.SEQUENCE:
-            touched_good_points_number, total_good_points_number = self.game_result.get_good_points_number()
-            add_scores: int = touched_good_points_number * TOUCHED_GOOD_POINT_WEIGHT
+            touched_points_number, total_points_number = self.game_result.sequence_mode_get_good_points_number()
+            add_scores: int = touched_points_number * TOUCHED_GOOD_POINT_WEIGHT
             self.good_points_label.config(
-                text=f'''{i18n.t('t.touch_points')}: {touched_good_points_number} / {total_good_points_number}
-{i18n.t('t.scores_get')}:   {TOUCHED_GOOD_POINT_WEIGHT} x {touched_good_points_number} = {add_scores}''')
+                text=f'''{i18n.t('t.touch_points')}: {touched_points_number} / {total_points_number}
+{i18n.t('t.scores_get')}:   {TOUCHED_GOOD_POINT_WEIGHT} x {touched_points_number} = {add_scores}''')
 
             score = self.game_result.get_score()
             full_score = self.game_result.get_full_score()
@@ -106,7 +106,6 @@ class ResultScreen(Frame):
 
     def view_image_btn_pressed(self):
         numpy_img = self.game_result.get_image()
-        touched_good_points, untouched_good_points, touched_bad_points, untouched_bad_points = self.game_result.get_points_lists()
 
         if self.settings.is_mirror_camera:
             numpy_img = cv2.flip(numpy_img, 1)
@@ -124,18 +123,32 @@ class ResultScreen(Frame):
         pose_detection_module.update_camera_view(camera_view=self.result_image_view, size=image_view_size)
         numpy_img = cv2.resize(numpy_img, (image_view_size.width, image_view_size.height))
 
-        for point in touched_good_points:
-            camera_point = pose_detection_module.map_to_camera_point(point)
-            cv2.circle(numpy_img, (int(camera_point.x), int(camera_point.y)), DOT_RADIUS, TOUCHED_GOOD_POINTS_COLOR, -1)
-        for point in untouched_good_points:
-            camera_point = pose_detection_module.map_to_camera_point(point)
-            cv2.circle(numpy_img, (int(camera_point.x), int(camera_point.y)), DOT_RADIUS, GOOD_POINTS_COLOR, -1)
-        for point in touched_bad_points:
-            camera_point = pose_detection_module.map_to_camera_point(point)
-            cv2.circle(numpy_img, (int(camera_point.x), int(camera_point.y)), DOT_RADIUS, TOUCHED_BAD_POINTS_COLOR, -1)
-        for point in untouched_bad_points:
-            camera_point = pose_detection_module.map_to_camera_point(point)
-            cv2.circle(numpy_img, (int(camera_point.x), int(camera_point.y)), DOT_RADIUS, BAD_POINTS_COLOR, -1)
+        if self.path.game_mode == GAME_MODE.OBSTACLE:
+            touched_good_points, untouched_good_points, touched_bad_points, untouched_bad_points = self.game_result.obstacle_mode_get_points_lists()
+            for point in touched_good_points:
+                camera_point = pose_detection_module.map_to_camera_point(point)
+                cv2.circle(numpy_img, (int(camera_point.x), int(camera_point.y)), DOT_RADIUS, TOUCHED_GOOD_POINTS_COLOR, -1)
+            for point in untouched_good_points:
+                camera_point = pose_detection_module.map_to_camera_point(point)
+                cv2.circle(numpy_img, (int(camera_point.x), int(camera_point.y)), DOT_RADIUS, GOOD_POINTS_COLOR, -1)
+            for point in touched_bad_points:
+                camera_point = pose_detection_module.map_to_camera_point(point)
+                cv2.circle(numpy_img, (int(camera_point.x), int(camera_point.y)), DOT_RADIUS, TOUCHED_BAD_POINTS_COLOR, -1)
+            for point in untouched_bad_points:
+                camera_point = pose_detection_module.map_to_camera_point(point)
+                cv2.circle(numpy_img, (int(camera_point.x), int(camera_point.y)), DOT_RADIUS, BAD_POINTS_COLOR, -1)
+
+        elif self.path.game_mode == GAME_MODE.SEQUENCE:
+            touched_points, untouched_points = self.game_result.sequence_mode_get_points_lists()
+            for point in touched_points:
+                camera_point = pose_detection_module.map_to_camera_point(point)
+                cv2.circle(numpy_img, (int(camera_point.x), int(camera_point.y)), DOT_RADIUS, TOUCHED_GOOD_POINTS_COLOR, -1)
+            for point in untouched_points:
+                camera_point = pose_detection_module.map_to_camera_point(point)
+                cv2.circle(numpy_img, (int(camera_point.x), int(camera_point.y)), DOT_RADIUS, GOOD_POINTS_COLOR, -1)
+
+        elif self.path.game_mode == GAME_MODE.ALPHABET:
+            pass
         
         self.img = PIL.ImageTk.PhotoImage(PIL.Image.fromarray(np.uint8(numpy_img)))
         self.result_image_view.config(image=self.img)
