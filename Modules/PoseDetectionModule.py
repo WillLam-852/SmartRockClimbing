@@ -94,7 +94,7 @@ class PoseDetectionModule:
         Start webcam input & pose detection (Call Repeatedly)
         """
         if self.cap.isOpened():
-            self.camera_input_image_processing()
+            self.camera_input_image_processing(is_test=False)
             # Send the image back to tkinter class (CameraView or SettingsView)
             pilImg = Image.fromarray(self.shown_image)
             imgtk = ImageTk.PhotoImage(image=pilImg)
@@ -103,7 +103,7 @@ class PoseDetectionModule:
             self.camera_view.after(int(1000 / SET_CAMERA_FPS), self.camera_input)
 
 
-    def camera_input_image_processing(self):
+    def camera_input_image_processing(self, is_test: bool=False):
         # Read the webcam input from openCV
         success, image = self.cap.read()
         if not success:
@@ -160,73 +160,75 @@ class PoseDetectionModule:
             )
         )
 
-        if self.camera_state == CAMERA_STATE.RECORDING:
-            self.recording_proceed_frame(image=image, pose_result=results)
-            
+        if not is_test:
+            if self.camera_state == CAMERA_STATE.RECORDING:
+                self.recording_proceed_frame(image=image, pose_result=results)
+                
 
-#             # For danger alert
-#             if self.camera_mode != CAMERA_MODE.SETTINGS and self.show_danger_alert:
-#                 if self.settings.danger_alert and results.pose_landmarks:
-#                     left_index = self.get_body_point(results.pose_landmarks.landmark[mp_pose.PoseLandmark.LEFT_INDEX])
-#                     right_index = self.get_body_point(results.pose_landmarks.landmark[mp_pose.PoseLandmark.RIGHT_INDEX])
-#                     left_ankle = self.get_body_point(results.pose_landmarks.landmark[mp_pose.PoseLandmark.LEFT_ANKLE])
-#                     right_ankle = self.get_body_point(results.pose_landmarks.landmark[mp_pose.PoseLandmark.RIGHT_ANKLE])
-#                     if left_index < left_ankle and right_index > right_ankle:
-#                         self.sound_module.danger_alert()
-#                         self.show_danger_alert(True)
-#                     else:
-#                         self.show_danger_alert(False)
-#                 else:
-#                     self.show_danger_alert(False)
+                # # For danger alert
+                # if self.camera_mode != CAMERA_MODE.SETTINGS and self.show_danger_alert:
+                #     if self.settings.danger_alert and results.pose_landmarks:
+                #         left_index = self.get_body_point(results.pose_landmarks.landmark[mp_pose.PoseLandmark.LEFT_INDEX])
+                #         right_index = self.get_body_point(results.pose_landmarks.landmark[mp_pose.PoseLandmark.RIGHT_INDEX])
+                #         left_ankle = self.get_body_point(results.pose_landmarks.landmark[mp_pose.PoseLandmark.LEFT_ANKLE])
+                #         right_ankle = self.get_body_point(results.pose_landmarks.landmark[mp_pose.PoseLandmark.RIGHT_ANKLE])
+                #         if left_index < left_ankle and right_index > right_ankle:
+                #             self.sound_module.danger_alert()
+                #             self.show_danger_alert(True)
+                #         else:
+                #             self.show_danger_alert(False)
+                #     else:
+                #         self.show_danger_alert(False)
 
-#             if self.camera_mode == CAMERA_MODE.GAME:
-#                 if len(self.universal_points) > 0:
-#                     if self.gamemode == GAME_MODE.ALPHABET:
-#                         if results.pose_landmarks:
-#                             left_foot = self.get_body_point(
-#                                 results.pose_landmarks.landmark[mp_pose.PoseLandmark.LEFT_FOOT_INDEX])
-#                             right_foot = self.get_body_point(
-#                                 results.pose_landmarks.landmark[mp_pose.PoseLandmark.RIGHT_FOOT_INDEX])
-#                             if self.camera_view_height * self.ground_screen_ratio <= left_foot[
-#                                 1] <= self.camera_view_height and self.camera_view_height * self.ground_screen_ratio <= \
-#                                     right_foot[1] <= self.camera_view_height:
-#                                 self.foot_touch_ground_time += 1
-#                                 if self.foot_touch_ground_time > self.time_threshold:
-#                                     self.update_progress_label(len(self.path.player_input_alphabets),
-#                                                            -1,
-#                                                            self.universal_points[0][5])
-#                                     self.foot_touch_ground_time = 0
+                # if self.camera_mode == CAMERA_MODE.GAME:
+                #     if len(self.universal_points) > 0:
+                #         if self.gamemode == GAME_MODE.ALPHABET:
+                #             if results.pose_landmarks:
+                #                 left_foot = self.get_body_point(
+                #                     results.pose_landmarks.landmark[mp_pose.PoseLandmark.LEFT_FOOT_INDEX])
+                #                 right_foot = self.get_body_point(
+                #                     results.pose_landmarks.landmark[mp_pose.PoseLandmark.RIGHT_FOOT_INDEX])
+                #                 if self.camera_view_height * self.ground_screen_ratio <= left_foot[
+                #                     1] <= self.camera_view_height and self.camera_view_height * self.ground_screen_ratio <= \
+                #                         right_foot[1] <= self.camera_view_height:
+                #                     self.foot_touch_ground_time += 1
+                #                     if self.foot_touch_ground_time > self.time_threshold:
+                #                         self.update_progress_label(len(self.path.player_input_alphabets),
+                #                                                -1,
+                #                                                self.universal_points[0][5])
+                #                         self.foot_touch_ground_time = 0
 
         # Resize image to fit camera view size
         self.resized_image = cv2.resize(image.copy(), (self.camera_view_size.width, self.camera_view_size.height))
 
-        if self.camera_mode == CAMERA_MODE.GAME:
-            self.game_show_game_points()
-            if self.game_path.path.game_mode == GAME_MODE.ALPHABET:
-                self.game_show_alphabets()
+        if not is_test:
+            if self.camera_mode == CAMERA_MODE.GAME:
+                self.game_show_game_points()
+                if self.game_path.path.game_mode == GAME_MODE.ALPHABET:
+                    self.game_show_alphabets()
 
-            self.game_calculate_pose(results.pose_landmarks)
-            self.game_update_progress_label(self.game_path)
+                self.game_calculate_pose(results.pose_landmarks)
+                self.game_update_progress_label(self.game_path)
 
-            # For Debugging, use mouse to simulate body point
-            if DEBUG_MODE and self.debug_game_camera_point:
-                cv2.circle(self.resized_image, (int(self.debug_game_camera_point.x), int(self.debug_game_camera_point.y)), DOT_RADIUS, (0, 0, 255), -1)
-                debug_game_universal_body_point = self.map_to_universal_point(self.debug_game_camera_point)
-                self.game_path.game_evaluate_body_point(universal_body_point=debug_game_universal_body_point)
+                # For Debugging, use mouse to simulate body point
+                if DEBUG_MODE and self.debug_game_camera_point:
+                    cv2.circle(self.resized_image, (int(self.debug_game_camera_point.x), int(self.debug_game_camera_point.y)), DOT_RADIUS, (0, 0, 255), -1)
+                    debug_game_universal_body_point = self.map_to_universal_point(self.debug_game_camera_point)
+                    self.game_path.game_evaluate_body_point(universal_body_point=debug_game_universal_body_point)
 
-        # Show Game Points (Settings)
-        elif self.camera_mode == CAMERA_MODE.SETTINGS:
-            self.settings_show_game_points()
+            # Show Game Points (Settings)
+            elif self.camera_mode == CAMERA_MODE.SETTINGS:
+                self.settings_show_game_points()
 
-            # If Calibration is on,
-            #   show a yellow horizontal line with CALIBRATION_PIXELS (default: 100)
-            #   and a white horizontal line for ground level
-            if self.settings_is_distance_calibration_shown:
-                # Draw middle distance calibration line
-                cv2.line(self.resized_image, (int(self.camera_view_size.width/2-CALIBRATION_PIXELS/2), int(self.camera_view_size.height/2)), (int(self.camera_view_size.width/2+CALIBRATION_PIXELS/2), int(self.camera_view_size.height/2)), RGB_COLOR_YELLOW, 5)
-                # Draw ground level line
-                ground_level = self.camera_view_size.height * self.settings.ground_ratio_calibration_actual_value
-                cv2.line(self.resized_image, (int(0), int(ground_level)), (int(self.camera_view_size.width), int(ground_level)), RGB_COLOR_WHITE, 5)
+                # If Calibration is on,
+                #   show a yellow horizontal line with CALIBRATION_PIXELS (default: 100)
+                #   and a white horizontal line for ground level
+                if self.settings_is_distance_calibration_shown:
+                    # Draw middle distance calibration line
+                    cv2.line(self.resized_image, (int(self.camera_view_size.width/2-CALIBRATION_PIXELS/2), int(self.camera_view_size.height/2)), (int(self.camera_view_size.width/2+CALIBRATION_PIXELS/2), int(self.camera_view_size.height/2)), RGB_COLOR_YELLOW, 5)
+                    # Draw ground level line
+                    ground_level = self.camera_view_size.height * self.settings.ground_ratio_calibration_actual_value
+                    cv2.line(self.resized_image, (int(0), int(ground_level)), (int(self.camera_view_size.width), int(ground_level)), RGB_COLOR_WHITE, 5)
 
         # If camera_state is not pause, copy the image to be used later
         if self.camera_state != CAMERA_STATE.PAUSE:
@@ -237,6 +239,7 @@ class PoseDetectionModule:
     # Methods for Stopping Camera
 
     def stop_camera_input(self):
+        self.change_camera_state(CAMERA_STATE.PLAYING)
         try:
             self.cap.release()
             if DEBUG_MODE:
@@ -316,7 +319,7 @@ class PoseDetectionModule:
         self.camera_state = camera_state
 
 
-    # Methods for (for RECORDING Camera State)
+    # Methods (for RECORDING Camera State)
 
     def recording_start(self):
         self.video_start_time = datetime.datetime.now()
@@ -474,9 +477,9 @@ class PoseDetectionModule:
     def game_update_progress_label(self, game_path: GamePath):
         if game_path:
             if self.game_path.game_mode == GAME_MODE.OBSTACLE:
-                self.game_progress_callback(touched=len(game_path.touched_good_points), all=game_path.obstacle_mode_get_all_good_points_number())
+                self.game_progress_callback(touched=len(game_path.touched_good_points), all=game_path.get_all_good_points_number())
             elif self.game_path.game_mode == GAME_MODE.SEQUENCE:
-                pass
+                self.game_progress_callback(touched=len(game_path.touched_good_points), all=game_path.get_all_good_points_number())
             elif self.game_path.game_mode == GAME_MODE.ALPHABET:
                 pass
                 # self.update_progress_label(touched=len(game_path.player_input_alphabets), all=0)
@@ -550,7 +553,6 @@ class PoseDetectionModule:
 
     def game_finish(self):
         game_result = self.game_path.game_evaluate_result()
-        self.toggle_record_video(False)
         return game_result
 
 
@@ -559,7 +561,7 @@ class PoseDetectionModule:
         Start webcam input for finding frame rate (Call Repeatedly)
         """
         if self.cap.isOpened():                
-            self.camera_input_image_processing()
+            self.camera_input_image_processing(is_test=True)
 
             # Send the image back to tkinter class (CameraView)
             pilImg = Image.fromarray(self.shown_image)

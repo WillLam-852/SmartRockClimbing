@@ -70,13 +70,13 @@ class ResultScreen(Frame):
             add_scores: int = touched_good_points_number * TOUCHED_GOOD_POINT_WEIGHT
             self.good_points_label.config(
                 text=f'''{i18n.t('t.touch_points')}: {touched_good_points_number} / {total_good_points_number}
-            {i18n.t('t.scores_get')}:   {TOUCHED_GOOD_POINT_WEIGHT} x {touched_good_points_number} = {add_scores}''')
+{i18n.t('t.scores_get')}:   {TOUCHED_GOOD_POINT_WEIGHT} x {touched_good_points_number} = {add_scores}''')
 
             touched_bad_points_number, total_bad_points_number = self.game_result.get_bad_points_number()
             minus_scores: int = touched_bad_points_number * TOUCHED_BAD_POINT_WEIGHT
             self.bad_points_label.config(
                 text=f'''{i18n.t('t.avoid_points')}: {touched_bad_points_number} / {total_bad_points_number}
-            {i18n.t('t.scores_deducted')}: {TOUCHED_BAD_POINT_WEIGHT} x {touched_bad_points_number} = {minus_scores}''')
+{i18n.t('t.scores_deducted')}: {TOUCHED_BAD_POINT_WEIGHT} x {touched_bad_points_number} = {minus_scores}''')
 
             score = self.game_result.get_score()
             full_score = self.game_result.get_full_score()
@@ -88,7 +88,7 @@ class ResultScreen(Frame):
             add_scores: int = touched_good_points_number * TOUCHED_GOOD_POINT_WEIGHT
             self.good_points_label.config(
                 text=f'''{i18n.t('t.touch_points')}: {touched_good_points_number} / {total_good_points_number}
-            {i18n.t('t.scores_get')}:   {TOUCHED_GOOD_POINT_WEIGHT} x {touched_good_points_number} = {add_scores}''')
+{i18n.t('t.scores_get')}:   {TOUCHED_GOOD_POINT_WEIGHT} x {touched_good_points_number} = {add_scores}''')
 
             score = self.game_result.get_score()
             full_score = self.game_result.get_full_score()
@@ -105,40 +105,42 @@ class ResultScreen(Frame):
     # Button Actions
 
     def view_image_btn_pressed(self):
-        self.numpy_img, touched_good_points, untouched_good_points, touched_bad_points, untouched_bad_points = self.game_result.get_image_and_points()
+        numpy_img = self.game_result.get_image()
+        touched_good_points, untouched_good_points, touched_bad_points, untouched_bad_points = self.game_result.get_points_lists()
 
-        if self.settings.mirror_camera:
-            self.numpy_img = cv2.flip(self.numpy_img, 1)
+        if self.settings.is_mirror_camera:
+            numpy_img = cv2.flip(numpy_img, 1)
         if self.settings.camera_orientation_mode == CAMERA_ORIENTATION.LEFT:
-            self.numpy_img = cv2.rotate(self.numpy_img, cv2.ROTATE_90_COUNTERCLOCKWISE)
+            numpy_img = cv2.rotate(numpy_img, cv2.ROTATE_90_COUNTERCLOCKWISE)
         elif self.settings.camera_orientation_mode == CAMERA_ORIENTATION.RIGHT:
-            self.numpy_img = cv2.rotate(self.numpy_img, cv2.ROTATE_90_CLOCKWISE)
+            numpy_img = cv2.rotate(numpy_img, cv2.ROTATE_90_CLOCKWISE)
         elif self.settings.camera_orientation_mode == CAMERA_ORIENTATION.INVERTED:
-            self.numpy_img = cv2.rotate(self.numpy_img, cv2.ROTATE_180)
+            numpy_img = cv2.rotate(numpy_img, cv2.ROTATE_180)
 
         pose_detection_module = PoseDetectionModule()
-        pose_detection_module.update_settings(self.settings)
-        image_resolution = Resolution(width=self.numpy_img.shape[1], height=self.numpy_img.shape[0])
-        image_view_width, image_view_height = self.gui_image_view_calculate(image_resolution=image_resolution)
-        pose_detection_module.update_camera_view(self.result_image_view, image_view_width, image_view_height)
-        self.numpy_img = cv2.resize(self.numpy_img, (image_view_width, image_view_height))
+        pose_detection_module.settings_update_settings(settings=self.settings)
+        image_resolution = Resolution(width=numpy_img.shape[1], height=numpy_img.shape[0])
+        image_view_size = self.gui_image_view_calculate(image_resolution=image_resolution)
+        pose_detection_module.update_camera_view(camera_view=self.result_image_view, size=image_view_size)
+        numpy_img = cv2.resize(numpy_img, (image_view_size.width, image_view_size.height))
 
         for point in touched_good_points:
             camera_point = pose_detection_module.map_to_camera_point(point)
-            cv2.circle(self.numpy_img, camera_point, DOT_RADIUS, TOUCHED_GOOD_POINTS_COLOR, -1)
+            camera_point_cv2 = (int(camera_point.x), int(camera_point.y))
+            cv2.circle(numpy_img, camera_point_cv2, DOT_RADIUS, TOUCHED_GOOD_POINTS_COLOR, -1)
         for point in untouched_good_points:
             camera_point = pose_detection_module.map_to_camera_point(point)
-            cv2.circle(self.numpy_img, camera_point, DOT_RADIUS, GOOD_POINTS_COLOR, -1)
+            cv2.circle(numpy_img, camera_point_cv2, DOT_RADIUS, GOOD_POINTS_COLOR, -1)
         for point in touched_bad_points:
             camera_point = pose_detection_module.map_to_camera_point(point)
-            cv2.circle(self.numpy_img, camera_point, DOT_RADIUS, TOUCHED_BAD_POINTS_COLOR, -1)
+            cv2.circle(numpy_img, camera_point_cv2, DOT_RADIUS, TOUCHED_BAD_POINTS_COLOR, -1)
         for point in untouched_bad_points:
             camera_point = pose_detection_module.map_to_camera_point(point)
-            cv2.circle(self.numpy_img, camera_point, DOT_RADIUS, BAD_POINTS_COLOR, -1)
+            cv2.circle(numpy_img, camera_point_cv2, DOT_RADIUS, BAD_POINTS_COLOR, -1)
         
-        self.img = PIL.ImageTk.PhotoImage(PIL.Image.fromarray(np.uint8(self.numpy_img)))
+        self.img = PIL.ImageTk.PhotoImage(PIL.Image.fromarray(np.uint8(numpy_img)))
         self.result_image_view.config(image=self.img)
-        self.result_image_view.place(relx=0.5, rely=0.5, width=image_view_width, height=image_view_height, anchor=CENTER)
+        self.result_image_view.place(relx=0.5, rely=0.5, width=image_view_size.width, height=image_view_size.height, anchor=CENTER)
         self.timer_label.place_forget()
         self.good_points_label.place_forget()
         self.bad_points_label.place_forget()
@@ -155,7 +157,7 @@ class ResultScreen(Frame):
         self.gui_set()
         self.buttons = {
             0: ControlBarButton(i18n.t('t.view_image'), self.view_image_btn_pressed),
-            9: ControlBarButton(i18n.t('t.home'), lambda: self.navigate(VIEW.HOME), THEME_COLOR_PINK)
+            9: ControlBarButton(i18n.t('t.home'), lambda: self.navigate(SCREEN.HOME), THEME_COLOR_PINK)
         }
         self.change_buttons(self.buttons)
 

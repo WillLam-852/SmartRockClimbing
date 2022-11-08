@@ -26,12 +26,9 @@ class GamePath:
         self.touched_points: list[Point] = []
         self.sound_module = SoundModule()
         self.game_mode = path.game_mode
-        if self.game_mode == GAME_MODE.OBSTACLE:
-            self.obstacle_mode_create_good_bad_points_list()
-        elif self.game_mode == GAME_MODE.SEQUENCE:
-            self.sequence_current_order = 0
-        elif self.game_mode == GAME_MODE.ALPHABET:
-            self.alphabet_player_input_alphabets: list[str] = []
+        self.obstacle_mode_create_good_bad_points_list()
+        self.sequence_current_order = 0
+        self.alphabet_player_input_alphabets: list[str] = []
 
 
     def obstacle_mode_create_good_bad_points_list(self):
@@ -53,7 +50,7 @@ class GamePath:
         self.touched_bad_points: list[Point] = []
 
 
-    def obstacle_mode_get_all_good_points_number(self) -> int:
+    def get_all_good_points_number(self) -> int:
         """
         Get the good points list (for showing the total number in progress label)
         """
@@ -145,7 +142,14 @@ class GamePath:
 
 
     def game_evaluate_result(self):
-        result = GameResult(self.path)
+        result = GameResult(
+            path=self.path,
+            touched_good_points=self.touched_good_points,
+            untouched_good_points=self.untouched_good_points,
+            touched_bad_points=self.touched_bad_points,
+            untouched_bad_points=self.untouched_bad_points,
+            alphabets=self.alphabet_player_input_alphabets
+        )
         return result
 
 
