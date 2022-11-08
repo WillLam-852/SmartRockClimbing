@@ -126,17 +126,16 @@ class ResultScreen(Frame):
 
         for point in touched_good_points:
             camera_point = pose_detection_module.map_to_camera_point(point)
-            camera_point_cv2 = (int(camera_point.x), int(camera_point.y))
-            cv2.circle(numpy_img, camera_point_cv2, DOT_RADIUS, TOUCHED_GOOD_POINTS_COLOR, -1)
+            cv2.circle(numpy_img, (int(camera_point.x), int(camera_point.y)), DOT_RADIUS, TOUCHED_GOOD_POINTS_COLOR, -1)
         for point in untouched_good_points:
             camera_point = pose_detection_module.map_to_camera_point(point)
-            cv2.circle(numpy_img, camera_point_cv2, DOT_RADIUS, GOOD_POINTS_COLOR, -1)
+            cv2.circle(numpy_img, (int(camera_point.x), int(camera_point.y)), DOT_RADIUS, GOOD_POINTS_COLOR, -1)
         for point in touched_bad_points:
             camera_point = pose_detection_module.map_to_camera_point(point)
-            cv2.circle(numpy_img, camera_point_cv2, DOT_RADIUS, TOUCHED_BAD_POINTS_COLOR, -1)
+            cv2.circle(numpy_img, (int(camera_point.x), int(camera_point.y)), DOT_RADIUS, TOUCHED_BAD_POINTS_COLOR, -1)
         for point in untouched_bad_points:
             camera_point = pose_detection_module.map_to_camera_point(point)
-            cv2.circle(numpy_img, camera_point_cv2, DOT_RADIUS, BAD_POINTS_COLOR, -1)
+            cv2.circle(numpy_img, (int(camera_point.x), int(camera_point.y)), DOT_RADIUS, BAD_POINTS_COLOR, -1)
         
         self.img = PIL.ImageTk.PhotoImage(PIL.Image.fromarray(np.uint8(numpy_img)))
         self.result_image_view.config(image=self.img)
