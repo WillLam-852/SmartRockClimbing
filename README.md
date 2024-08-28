@@ -1,5 +1,24 @@
 # SmartRockClimbing
 
+## Description
+SmartRockClimbing is a desktop application that offers AI assistance for rock climbing enthusiasts.
+
+## Features
+- Suggests climbing routes
+- Analyzes climbing techniques
+- Provides real-time feedback
+
+## Installation
+1. Clone the repository.
+2. Follow the setup instructions below.
+3. Launch the application on your desktop.
+
+## Usage
+- Input your climbing goals.
+- Receive personalized AI guidance.
+
+---
+
 ## How to Create .exe Files
 
 - Create Install_SmartRockClimbing.exe file
